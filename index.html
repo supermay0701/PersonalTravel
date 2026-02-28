@@ -713,6 +713,7 @@
       if (!flights||!flights.length) {
         ct.innerHTML = '<div class="text-center py-16"><div class="text-5xl mb-4">✈️</div><p class="text-white/50 text-lg font-bold">尚未新增航班資訊</p>'+(isEditMode?'<button onclick="openFlightModal()" class="mt-4 px-6 py-2 bg-sky-600 text-white rounded-full font-bold hover:bg-sky-700 transition">✈️ 新增航班</button>':'')+'</div>'; return;
       }
+      flights.sort((a, b) => ((a.DepartDate||'')+(a.DepartTime||'')).localeCompare((b.DepartDate||'')+(b.DepartTime||'')));
       let h = '<div class="space-y-4">';
       flights.forEach(f => {
         let eb = isEditMode ? '<button onclick="openFlightModal(\''+esc(f.ID)+'\')" class="text-sky-200 hover:text-white text-sm font-bold">✏️</button>' : '';
