@@ -64,9 +64,17 @@
       background: repeating-linear-gradient(90deg, rgba(255,255,255,0.25) 0px, rgba(255,255,255,0.25) 6px, transparent 6px, transparent 14px);
     }
     .main-tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5);
-      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-      padding: 8px 20px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.25s;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+      padding: 6px 10px; font-weight: 700; cursor: pointer; transition: all 0.25s; min-width: 56px;
+    }
+    .main-tab .mt-icon { font-size: 19px; line-height: 1; }
+    .main-tab .mt-label { font-size: 11px; letter-spacing: 0.02em; white-space: nowrap; }
+    @media (min-width: 640px) {
+      .main-tab { padding: 8px 18px; min-width: 72px; }
+      .main-tab .mt-icon { font-size: 22px; }
+      .main-tab .mt-label { font-size: 13px; }
     }
     .main-tab:hover { background: rgba(var(--accent-rgb),0.2); color: var(--led); }
     .main-tab.active { background: rgba(var(--accent-rgb),0.15); color: var(--led); border-color: var(--accent); box-shadow: 0 2px 12px rgba(var(--accent-rgb),0.25); }
@@ -74,8 +82,11 @@
       background: rgba(255,255,255,0.07); color: #9ca3af;
       border: 2px solid rgba(255,255,255,0.12); border-radius: 9999px;
       padding: 6px 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.05em;
-      cursor: pointer; transition: all 0.25s; white-space: nowrap;
+      cursor: pointer; transition: all 0.25s; white-space: nowrap; flex-shrink: 0;
     }
+    /* 橫向捲動列（天數）隱藏捲軸 */
+    .hscroll { -ms-overflow-style: none; scrollbar-width: none; }
+    .hscroll::-webkit-scrollbar { display: none; }
     .day-tab:hover { background: rgba(var(--primary-rgb),0.7); color: #fff; border-color: var(--primary); }
     .day-tab.active { background: var(--primary); color: #fff; border-color: var(--primary-border); box-shadow: 0 4px 18px rgba(var(--primary-rgb),0.5); }
     .schedule-card {
@@ -103,23 +114,27 @@
 </head>
 <body>
   <div class="content max-w-4xl mx-auto px-4 py-8">
-    <div class="scoreboard p-6 mb-6 text-center relative">
-      <select id="trip-select" onchange="switchTrip(this.value)" title="切換旅行" class="absolute top-3 left-3 text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 outline-none cursor-pointer max-w-[45%] transition"></select>
-      <button id="lock-btn" onclick="toggleEditMode()" class="absolute top-3 right-3 text-xl opacity-50 hover:opacity-100 transition-opacity cursor-pointer" title="進入編輯模式">🔒</button>
-      <div id="hdr-led" class="led-text text-sm font-bold mb-2 tracking-widest">⚾ BASEBALL TRIP ⚾</div>
-      <h1 id="hdr-h1" class="text-white text-3xl md:text-4xl font-bold tracking-wide">旅遊行程</h1>
-      <div id="hdr-sub" class="text-sm font-bold mt-1 tracking-wider opacity-80 hidden" style="color:var(--led)"></div>
-      <div id="hdr-divider" class="stitch-divider mt-4 text-xs">⚾ 行程表 SCHEDULE ⚾</div>
+    <div class="scoreboard p-3 md:p-5 mb-5">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <select id="trip-select" onchange="switchTrip(this.value)" title="切換旅行" class="text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 outline-none cursor-pointer max-w-[60%] transition"></select>
+        <button id="lock-btn" onclick="toggleEditMode()" class="text-xl opacity-60 hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0" title="進入編輯模式">🔒</button>
+      </div>
+      <div class="text-center">
+        <div id="hdr-led" class="led-text text-[11px] md:text-sm font-bold tracking-widest">⚾ BASEBALL TRIP ⚾</div>
+        <h1 id="hdr-h1" class="text-white text-xl md:text-3xl font-bold tracking-wide leading-tight">旅遊行程</h1>
+        <div id="hdr-sub" class="text-[11px] md:text-sm font-bold mt-0.5 tracking-wider opacity-80 hidden" style="color:var(--led)"></div>
+        <div id="hdr-divider" class="stitch-divider mt-2 md:mt-3 text-xs">⚾ 行程表 SCHEDULE ⚾</div>
+      </div>
     </div>
     <div class="flex justify-center gap-2 mb-5">
-      <button class="main-tab active" data-section="itinerary" onclick="switchSection('itinerary')">📅 行程</button>
-      <button class="main-tab" data-section="flights" onclick="switchSection('flights')">✈️ 航班</button>
-      <button class="main-tab" data-section="checklist" onclick="switchSection('checklist')">✅ 確認清單</button>
-      <button class="main-tab" data-section="expenses" onclick="switchSection('expenses')">💰 帳務</button>
+      <button class="main-tab active" data-section="itinerary" onclick="switchSection('itinerary')"><span class="mt-icon">📅</span><span class="mt-label">行程</span></button>
+      <button class="main-tab" data-section="flights" onclick="switchSection('flights')"><span class="mt-icon">✈️</span><span class="mt-label">航班</span></button>
+      <button class="main-tab" data-section="checklist" onclick="switchSection('checklist')"><span class="mt-icon">✅</span><span class="mt-label">確認清單</span></button>
+      <button class="main-tab" data-section="expenses" onclick="switchSection('expenses')"><span class="mt-icon">💰</span><span class="mt-label">帳務</span></button>
     </div>
     <div id="edit-indicator" class="hidden bg-green-600 text-white text-center text-xs py-1.5 font-bold rounded-lg mb-5 tracking-wide">✏️ 編輯模式已啟用 — 點擊 🔓 可退出</div>
     <div id="section-itinerary" class="app-section">
-      <div id="tab-bar" class="flex flex-wrap gap-2 mb-6 justify-center"></div>
+      <div id="tab-bar" class="flex flex-nowrap gap-2 mb-6 overflow-x-auto hscroll px-1 py-1"></div>
       <div id="itinerary-container"><div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div></div>
     </div>
     <div id="section-flights" class="app-section hidden">
@@ -502,8 +517,9 @@
     const DEFAULT_TRIP = 'tokyo2026'; // 伺服器尚未回覆預設旅行前的暫用主題
     let CUR = TRIPS[DEFAULT_TRIP];    // 目前生效的旅行設定（render 時讀取）
 
-    // 決定要顯示哪一趟：?trip= → 上次選擇 → （空字串時由伺服器預設解析）
-    let TRIP_ID = new URLSearchParams(window.location.search).get('trip') || localStorage.getItem('selectedTrip') || '';
+    // 決定要顯示哪一趟：?trip= → 使用者用下拉明確選的（tripChoice）→ 空字串時交給伺服器 Config 預設解析。
+    // 注意：不用舊的 selectedTrip 鍵，避免先前 fallback 寫入的值蓋掉 DB 預設。
+    let TRIP_ID = new URLSearchParams(window.location.search).get('trip') || localStorage.getItem('tripChoice') || '';
 
     const TC = {
       plane:     { icon: '✈️', label: '飛機',   bg: 'bg-sky-50',     bd: 'border-sky-300',     tx: 'text-sky-700',     ln: 'border-sky-200' },
@@ -565,7 +581,7 @@
     function switchTrip(t) {
       if (t === TRIP_ID) return;
       TRIP_ID = t;
-      localStorage.setItem('selectedTrip', t);
+      localStorage.setItem('tripChoice', t); // 明確的使用者選擇，會被記住
       const u = new URL(window.location.href); u.searchParams.set('trip', t); history.replaceState(null, '', u);
       // 切換旅行時退出編輯模式（金鑰可能不適用於其他旅行）
       isEditMode = false; cachedApiKey = null; updateEditUI();
@@ -577,7 +593,9 @@
     }
     function init() {
       buildTripDropdown();
-      applyTrip((TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : DEFAULT_TRIP);
+      const hint = localStorage.getItem('defaultTripHint');
+      const provisional = (TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : (TRIPS[hint] ? hint : DEFAULT_TRIP);
+      applyTrip(provisional);
       loadData();
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
     }
@@ -600,25 +618,24 @@
     function autoTime(v) { v=v.replace(/[^0-9]/g,''); if(v.length===3) v='0'+v; if(v.length===4) return v.substring(0,2)+':'+v.substring(2,4); return v; }
 
     function loadData() {
-      let renderedFromCache = false;
-      if (TRIP_ID) {
-        const c = localStorage.getItem('cache_' + TRIP_ID);
-        if (c) { try { appData = JSON.parse(c); renderAll(); renderedFromCache = true; } catch(e){} }
+      // 即時渲染用的 trip：已確定的 TRIP_ID，否則用「上次伺服器解析出的預設」提示，避免閃動
+      const renderTrip = TRIP_ID || localStorage.getItem('defaultTripHint') || '';
+      let renderedTrip = '';
+      if (renderTrip) {
+        const c = localStorage.getItem('cache_' + renderTrip);
+        if (c) { try { appData = JSON.parse(c); renderAll(); renderedTrip = renderTrip; } catch(e){} }
       }
-      const prevVer = TRIP_ID ? localStorage.getItem('ver_' + TRIP_ID) : null;
       const getUrl = API_BASE + (TRIP_ID ? '?trip=' + encodeURIComponent(TRIP_ID) : '');
       fetch(getUrl).then(r=>r.json()).then(resp => {
         if (resp.status === 'success') {
-          // 伺服器解析出的預設旅行（前端未指定 trip 時）
+          // 未指定 trip 時，由伺服器 Config 解析出的預設旅行（DB 預設為準）
           if (resp.resolvedTrip && resp.resolvedTrip !== TRIP_ID) {
             TRIP_ID = resp.resolvedTrip;
-            localStorage.setItem('selectedTrip', TRIP_ID);
+            localStorage.setItem('defaultTripHint', TRIP_ID); // 僅作下次的暫用提示，不當成使用者選擇
             applyTrip(TRIP_ID);
-            renderedFromCache = false; // 主題與資料都換了，強制重繪
           } else if (!TRIP_ID) {
-            // 伺服器未設定 Config.defaultTrip → 退回前端預設旅行，重新以正確 trip 抓取
-            TRIP_ID = DEFAULT_TRIP;
-            localStorage.setItem('selectedTrip', TRIP_ID);
+            // 伺服器未設定 Config.defaultTrip → 退回提示或前端預設，重新以正確 trip 抓取
+            TRIP_ID = localStorage.getItem('defaultTripHint') || DEFAULT_TRIP;
             applyTrip(TRIP_ID);
             loadData();
             return;
@@ -626,16 +643,15 @@
           // TRIP_ID 已確定 → 嘗試用本機金鑰恢復登入（裝置 session）
           tryRestoreAuth();
           const newVer = resp.version != null ? String(resp.version) : null;
-          // 版本未變且已從快取繪製過 → 資料沒動，免二次重繪
-          if (renderedFromCache && newVer !== null && newVer === prevVer) return;
+          const prevVer = localStorage.getItem('ver_' + TRIP_ID);
+          // 已從「相同 trip」的快取繪製、且版本沒變 → 免二次重繪（無閃動）
+          if (renderedTrip === TRIP_ID && newVer !== null && newVer === prevVer) return;
           appData = { itinerary: resp.itinerary||[], flights: resp.flights||[], checklist: resp.checklist||[], participants: resp.participants||[], expenses: resp.expenses||[] };
-          if (TRIP_ID) {
-            localStorage.setItem('cache_' + TRIP_ID, JSON.stringify(appData));
-            if (newVer !== null) localStorage.setItem('ver_' + TRIP_ID, newVer);
-          }
+          localStorage.setItem('cache_' + TRIP_ID, JSON.stringify(appData));
+          if (newVer !== null) localStorage.setItem('ver_' + TRIP_ID, newVer);
           renderAll();
-        } else if (!renderedFromCache) { renderAll(); }
-      }).catch(e => { console.error('Fetch error:', e); if (!renderedFromCache) renderAll(); });
+        } else if (!renderedTrip) { renderAll(); }
+      }).catch(e => { console.error('Fetch error:', e); if (!renderedTrip) renderAll(); });
     }
 
     let currentDay = null; // track active day tab
@@ -688,6 +704,15 @@
         const hd = document.createElement('div'); hd.className = 'stitch-divider text-white mb-5 text-sm';
         const dateLabel = dayDateMap[day] ? '  ' + dayDateMap[day] : '';
         hd.textContent = CUR.dayDivider[0]+'  '+day+dateLabel+'  '+CUR.dayDivider[1]; panel.appendChild(hd);
+        // 編輯模式的「新增行程/交通」按鈕（上下都放，免往下捲）
+        const makeAddBar = (mc) => {
+          const aa = document.createElement('div'); aa.className = 'flex justify-center gap-3 ' + mc;
+          const lid = days[day].length>0 ? days[day][days[day].length-1].ID : '';
+          const let_ = days[day].length>0 ? getItemEndTime(days[day][days[day].length-1]) : '';
+          aa.innerHTML = '<button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'activity\',\''+esc(let_)+'\')" class="px-4 py-2 bg-primary-600/80 text-white rounded-full text-sm font-bold hover:bg-primary-600 transition">🎯 新增行程</button><button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'subway\',\''+esc(let_)+'\')" class="px-4 py-2 bg-sky-600/80 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition">🚃 新增交通</button>';
+          return aa;
+        };
+        if (isEditMode) panel.appendChild(makeAddBar('mb-4'));
         const list = document.createElement('div');
         // Group items into sequential blocks; consecutive non-full-participant items = parallel block
         const blocks = groupParallelBlocks(days[day], allNames);
@@ -716,15 +741,12 @@
           list.appendChild(createInsertPoint(day, lastItem.ID, getItemEndTime(lastItem)));
         }
         panel.appendChild(list);
-        if (isEditMode) {
-          const aa = document.createElement('div'); aa.className = 'flex justify-center gap-3 mt-5';
-          const lid = days[day].length>0 ? days[day][days[day].length-1].ID : '';
-          const let_ = days[day].length>0 ? getItemEndTime(days[day][days[day].length-1]) : '';
-          aa.innerHTML = '<button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'activity\',\''+esc(let_)+'\')" class="px-4 py-2 bg-primary-600/80 text-white rounded-full text-sm font-bold hover:bg-primary-600 transition">🎯 新增行程</button><button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'subway\',\''+esc(let_)+'\')" class="px-4 py-2 bg-sky-600/80 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition">🚃 新增交通</button>';
-          panel.appendChild(aa);
-        }
+        if (isEditMode) panel.appendChild(makeAddBar('mt-5'));
         ct.appendChild(panel);
       });
+      // 把目前作用中的天數捲到可視範圍（天數多時橫向捲動列）
+      const activeTab = tb.querySelector('.day-tab.active');
+      if (activeTab) { try { activeTab.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch(e) {} }
     }
 
     function isFullParticipant(item, allNames) {
@@ -1049,6 +1071,8 @@
       currentDay = d;
       document.querySelectorAll('.day-tab').forEach(t=>t.classList.toggle('active',t.dataset.day===d));
       document.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+CSS.escape(d)));
+      const at = document.querySelector('.day-tab.active');
+      if (at) { try { at.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch(e) {} }
     }
 
     // 用本機儲存的金鑰自動恢復登入（裝置 session）。對目前旅行靜默驗證，成功才進編輯模式。
