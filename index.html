@@ -3,28 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚾ 東京棒球之旅 6日行程</title>
+  <title>⚾ 旅遊行程</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d1f3c">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="旅遊行程">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 自訂 primary 色階 → 對應 CSS 變數，切換旅行時改變數即可換主題（支援 /透明度 修飾）
+    tailwind.config = { theme: { extend: { colors: {
+      primary: {
+        400: 'rgb(var(--c-primary-400) / <alpha-value>)',
+        600: 'rgb(var(--c-primary-600) / <alpha-value>)',
+        700: 'rgb(var(--c-primary-700) / <alpha-value>)',
+        900: 'rgb(var(--c-primary-900) / <alpha-value>)',
+      }
+    }}}};
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      /* 預設主題（tokyo2026）；applyTheme() 會在載入時依旅行覆蓋這些變數 */
+      --bg-grad: linear-gradient(180deg, #0d1f3c 0%, #132d54 45%, #1a4a28 100%);
+      --score-grad: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 60%, #0d1f3c 100%);
+      --stripe: 255,255,255;
+      --accent: #c8a800; --accent-rgb: 200,168,0;
+      --led: #ffd700; --led-rgb: 255,215,0;
+      --primary: #c8102e; --primary-rgb: 200,16,46; --primary-border: #ff5050;
+      --c-primary-400: 248 113 113;
+      --c-primary-600: 220 38 38;
+      --c-primary-700: 185 28 28;
+      --c-primary-900: 127 29 29;
+    }
     * { box-sizing: border-box; }
     body {
       font-family: 'Oswald', 'Noto Sans TC', sans-serif;
       min-height: 100vh;
-      background: linear-gradient(180deg, #0d1f3c 0%, #132d54 45%, #1a4a28 100%);
+      background: var(--bg-grad);
       background-attachment: fixed;
     }
     body::before {
       content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: repeating-linear-gradient(-55deg, transparent, transparent 60px, rgba(255,255,255,0.018) 60px, rgba(255,255,255,0.018) 61px);
+      background-image: repeating-linear-gradient(-55deg, transparent, transparent 60px, rgba(var(--stripe),0.018) 60px, rgba(var(--stripe),0.018) 61px);
     }
     .content { position: relative; z-index: 1; }
     .scoreboard {
-      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 60%, #0d1f3c 100%);
-      border: 3px solid #c8a800; border-radius: 14px;
-      box-shadow: 0 0 40px rgba(200,168,0,0.25), 0 8px 32px rgba(0,0,0,0.5);
+      background: var(--score-grad);
+      border: 3px solid var(--accent); border-radius: 14px;
+      box-shadow: 0 0 40px rgba(var(--accent-rgb),0.25), 0 8px 32px rgba(0,0,0,0.5);
     }
-    .led-text { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.7), 0 0 20px rgba(255,215,0,0.4); letter-spacing: 0.15em; }
+    .led-text { color: var(--led); text-shadow: 0 0 10px rgba(var(--led-rgb),0.7), 0 0 20px rgba(var(--led-rgb),0.4); letter-spacing: 0.15em; }
     .stitch-divider { display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.35); font-size: 13px; letter-spacing: 0.1em; }
     .stitch-divider::before, .stitch-divider::after {
       content: ''; flex: 1; height: 1px;
@@ -35,21 +68,21 @@
       border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
       padding: 8px 20px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.25s;
     }
-    .main-tab:hover { background: rgba(200,168,0,0.2); color: #ffd700; }
-    .main-tab.active { background: rgba(200,168,0,0.15); color: #ffd700; border-color: #c8a800; box-shadow: 0 2px 12px rgba(200,168,0,0.25); }
+    .main-tab:hover { background: rgba(var(--accent-rgb),0.2); color: var(--led); }
+    .main-tab.active { background: rgba(var(--accent-rgb),0.15); color: var(--led); border-color: var(--accent); box-shadow: 0 2px 12px rgba(var(--accent-rgb),0.25); }
     .day-tab {
       background: rgba(255,255,255,0.07); color: #9ca3af;
       border: 2px solid rgba(255,255,255,0.12); border-radius: 9999px;
       padding: 6px 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.05em;
       cursor: pointer; transition: all 0.25s; white-space: nowrap;
     }
-    .day-tab:hover { background: rgba(200,16,46,0.7); color: #fff; border-color: #c8102e; }
-    .day-tab.active { background: #c8102e; color: #fff; border-color: #ff5050; box-shadow: 0 4px 18px rgba(200,16,46,0.5); }
+    .day-tab:hover { background: rgba(var(--primary-rgb),0.7); color: #fff; border-color: var(--primary); }
+    .day-tab.active { background: var(--primary); color: #fff; border-color: var(--primary-border); box-shadow: 0 4px 18px rgba(var(--primary-rgb),0.5); }
     .schedule-card {
-      background: rgba(255,255,255,0.97); border-left: 5px solid #c8102e; border-radius: 10px;
+      background: rgba(255,255,255,0.97); border-left: 5px solid var(--primary); border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.18); transition: transform 0.2s, box-shadow 0.2s;
     }
-    .schedule-card:hover { transform: translateX(5px); box-shadow: -4px 0 16px rgba(200,16,46,0.25), 0 4px 18px rgba(0,0,0,0.22); }
+    .schedule-card:hover { transform: translateX(5px); box-shadow: -4px 0 16px rgba(var(--primary-rgb),0.25), 0 4px 18px rgba(0,0,0,0.22); }
     .parallel-block .pt-badge { display: none; }
     .day-panel { display: none; }
     .day-panel.active { display: block; }
@@ -61,16 +94,22 @@
       background: rgba(255,255,255,0.08); border: 1px dashed rgba(255,255,255,0.25);
       color: rgba(255,255,255,0.4); font-size: 12px; cursor: pointer; transition: all 0.2s; line-height: 20px;
     }
-    .insert-btn:hover { background: #c8102e; border-color: #c8102e; color: white; transform: scale(1.3); }
+    .insert-btn:hover { background: var(--primary); border-color: var(--primary); color: white; transform: scale(1.3); }
+    /* 旅行下拉：關閉時深底白字；展開清單也用深底白字，避免白字白底看不見 */
+    #trip-select { background: rgba(0,0,0,0.4); color: #fff; }
+    #trip-select:hover { background: rgba(0,0,0,0.55); }
+    #trip-select option { background: #15192e; color: #fff; }
   </style>
 </head>
 <body>
   <div class="content max-w-4xl mx-auto px-4 py-8">
     <div class="scoreboard p-6 mb-6 text-center relative">
+      <select id="trip-select" onchange="switchTrip(this.value)" title="切換旅行" class="absolute top-3 left-3 text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 outline-none cursor-pointer max-w-[45%] transition"></select>
       <button id="lock-btn" onclick="toggleEditMode()" class="absolute top-3 right-3 text-xl opacity-50 hover:opacity-100 transition-opacity cursor-pointer" title="進入編輯模式">🔒</button>
-      <div class="led-text text-sm font-bold mb-2 tracking-widest">⚾ BASEBALL TRIP · TOKYO ⚾</div>
-      <h1 class="text-white text-3xl md:text-4xl font-bold tracking-wide">台灣 ➔ 東京 6 日棒球之旅</h1>
-      <div class="stitch-divider mt-4 text-xs">⚾ 行程表 SCHEDULE ⚾</div>
+      <div id="hdr-led" class="led-text text-sm font-bold mb-2 tracking-widest">⚾ BASEBALL TRIP ⚾</div>
+      <h1 id="hdr-h1" class="text-white text-3xl md:text-4xl font-bold tracking-wide">旅遊行程</h1>
+      <div id="hdr-sub" class="text-sm font-bold mt-1 tracking-wider opacity-80 hidden" style="color:var(--led)"></div>
+      <div id="hdr-divider" class="stitch-divider mt-4 text-xs">⚾ 行程表 SCHEDULE ⚾</div>
     </div>
     <div class="flex justify-center gap-2 mb-5">
       <button class="main-tab active" data-section="itinerary" onclick="switchSection('itinerary')">📅 行程</button>
@@ -112,6 +151,7 @@
     <span class="from-rose-400 to-orange-300 from-violet-400 to-purple-300 from-cyan-400 to-blue-300"></span>
     <span class="from-emerald-400 to-teal-300 from-amber-400 to-yellow-300 from-pink-400 to-fuchsia-300"></span>
     <span class="from-indigo-400 to-sky-300 from-red-400 to-pink-300 bg-gradient-to-br"></span>
+    <span class="bg-primary-600 hover:bg-primary-700 bg-primary-700 hover:bg-primary-600 bg-primary-600/80 text-primary-700 focus:ring-primary-400 from-primary-700 to-primary-900"></span>
   </div>
 
   <!-- 驗證 Modal -->
@@ -132,7 +172,7 @@
   <!-- 編輯 Modal -->
   <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center modal-overlay z-50">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden mx-4 max-h-[90vh] overflow-y-auto" id="edit-modal-scroll">
-      <div class="bg-gradient-to-r from-red-700 to-red-900 px-6 py-4 flex justify-between items-center">
+      <div class="bg-gradient-to-r from-primary-700 to-primary-900 px-6 py-4 flex justify-between items-center">
         <h2 class="text-lg font-bold text-white">✏️ <span id="modal-title">編輯</span></h2>
         <div class="flex gap-3">
           <button onclick="copyItem()" class="text-white/70 hover:text-white text-sm font-bold transition">📋 複製</button>
@@ -142,32 +182,32 @@
       <div class="p-6">
         <input type="hidden" id="edit-id">
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">🏷️ 類型</label>
-          <select id="edit-type" onchange="renderTransportIcons('edit',this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none">
+          <select id="edit-type" onchange="renderTransportIcons('edit',this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none">
             <option value="activity">🎯 行程</option>
             <optgroup label="交通方式"><option value="plane">✈️ 飛機</option><option value="subway">🚇 地鐵</option><option value="bus">🚌 巴士</option><option value="train">🚄 火車/新幹線</option><option value="taxi">🚕 計程車</option><option value="bicycle">🚲 腳踏車</option><option value="walking">🚶 步行</option></optgroup>
           </select></div>
         <div id="edit-transport-icons" class="hidden mb-3">
           <div class="flex flex-wrap gap-2" id="edit-transport-btns"></div></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">📌 名稱 / 描述</label>
-          <input type="text" id="edit-activity" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none"></div>
+          <input type="text" id="edit-activity" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">⏰ 開始時間</label>
-          <input type="text" id="edit-time" placeholder="HH:MM 或 HHmm" onblur="this.value=autoTime(this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none"></div>
+          <input type="text" id="edit-time" placeholder="HH:MM 或 HHmm" onblur="this.value=autoTime(this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">⏱ 預計時間 (分鐘)</label>
-          <input type="number" id="edit-duration" min="0" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none"></div>
+          <input type="number" id="edit-duration" min="0" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">🏁 實際結束時間</label>
-          <input type="text" id="edit-actual-end" placeholder="HH:MM 或 HHmm" onblur="this.value=autoTime(this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none"></div>
+          <input type="text" id="edit-actual-end" placeholder="HH:MM 或 HHmm" onblur="this.value=autoTime(this.value)" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">📍 Google Maps 連結</label>
-          <input type="url" id="edit-map-url" placeholder="https://maps.google.com/..." onpaste="setTimeout(()=>fetchMapImage('edit'),100)" onblur="fetchMapImage('edit')" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none text-sm"></div>
+          <input type="url" id="edit-map-url" placeholder="https://maps.google.com/..." onpaste="setTimeout(()=>fetchMapImage('edit'),100)" onblur="fetchMapImage('edit')" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none text-sm"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">🖼️ 圖片網址</label>
-          <input type="url" id="edit-image-url" placeholder="https://..." class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none text-sm"></div>
+          <input type="url" id="edit-image-url" placeholder="https://..." class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none text-sm"></div>
         <div class="mb-3"><label class="block text-sm font-bold text-gray-700 mb-1">📝 備註</label>
-          <input type="text" id="edit-note" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none"></div>
+          <input type="text" id="edit-note" class="w-full border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none"></div>
         <div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-1">💴 費用</label>
           <div class="flex gap-2">
-            <select id="edit-currency" class="border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none text-sm font-bold" style="min-width:90px">
+            <select id="edit-currency" class="border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none text-sm font-bold" style="min-width:90px">
               <option value="JPY">🇯🇵 JPY</option><option value="TWD">🇹🇼 TWD</option>
             </select>
-            <input type="number" id="edit-expense" class="flex-1 border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-red-400 outline-none">
+            <input type="number" id="edit-expense" class="flex-1 border-2 border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-primary-400 outline-none">
           </div></div>
         <div class="mb-4">
           <label class="flex items-center gap-2 cursor-pointer mb-2">
@@ -213,7 +253,7 @@
         <div class="flex justify-end items-center">
           <div class="flex gap-3">
             <button onclick="closeEditModal()" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-bold">取消</button>
-            <button id="submit-btn" onclick="submitUpdate()" class="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-bold">⚾ 儲存</button>
+            <button id="submit-btn" onclick="submitUpdate()" class="px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-bold">⚾ 儲存</button>
           </div>
         </div>
       </div>
@@ -412,9 +452,58 @@
   </div>
 
   <script>
-    const API_URL_RAW = 'https://script.google.com/macros/s/AKfycbzvGV91AQJv5vdAGTYdgQq8sV1jqI4VWSIENUw2iZ0FDGGPaAI1vlYvYxvYKYYBTY1J/exec?trip=tokyo2026';
-    const API_BASE = API_URL_RAW.split('?')[0];
-    const TRIP_ID = new URLSearchParams(window.location.search).get('trip') || new URLSearchParams(API_URL_RAW.split('?')[1]||'').get('trip') || '';
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbzvGV91AQJv5vdAGTYdgQq8sV1jqI4VWSIENUw2iZ0FDGGPaAI1vlYvYxvYKYYBTY1J/exec';
+
+    // ===== 旅行登錄表：新增一趟旅行只要在這裡加一筆（主題 + 標題文字）=====
+    const TRIPS = {
+      tokyo2026: {
+        name: '🗼 東京 2026',
+        title: '⚾ 東京棒球之旅 6日行程',
+        led: '⚾ BASEBALL TRIP · TOKYO ⚾',
+        h1: '台灣 ➔ 東京 6 日棒球之旅',
+        sub: '',
+        divider: '⚾ 行程表 SCHEDULE ⚾',
+        dayDivider: ['⚾', '⚾'],
+        emptyEmoji: '🗼',
+        icons: ['🏯','⛩️','🗼','🎌','🌸','🍣','🎎','🗾','🚅','🎐','🍱','🏔️'],
+        theme: {
+          themeColor: '#0d1f3c',
+          bgGrad: 'linear-gradient(180deg, #0d1f3c 0%, #132d54 45%, #1a4a28 100%)',
+          scoreGrad: 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 60%, #0d1f3c 100%)',
+          stripe: '255,255,255',
+          accent: '#c8a800', accentRgb: '200,168,0',
+          led: '#ffd700', ledRgb: '255,215,0',
+          primary: '#c8102e', primaryRgb: '200,16,46', primaryBorder: '#ff5050',
+          tw400: '248 113 113', tw600: '220 38 38', tw700: '185 28 28', tw900: '127 29 29',
+        },
+      },
+      hokkaido202606: {
+        name: '🦊 北海道 2026',
+        title: '⚾ 北海道夏の棒球之旅',
+        led: '⚾ FIGHTERS · HOKKAIDO BASEBALL TRIP ⚾',
+        h1: '台灣 ➔ 北海道 棒球之旅 🌻',
+        sub: '北海道日本ハムファイターズ ⚾ ES CON FIELD',
+        divider: '🏔️ 行程表 SCHEDULE 🦊',
+        dayDivider: ['🏔️', '🦊'],
+        emptyEmoji: '🌻',
+        icons: ['🦊','⚾','🌻','🐄','🐻','🌿','🦅','🏔️','🌊','🎪','🦌','🌺'],
+        theme: {
+          themeColor: '#0c2340',
+          bgGrad: 'linear-gradient(180deg, #0c2340 0%, #093060 45%, #0b4a20 100%)',
+          scoreGrad: 'linear-gradient(135deg, #081828 0%, #0c2340 60%, #0a3060 100%)',
+          stripe: '80,210,240',
+          accent: '#00c8e8', accentRgb: '0,200,232',
+          led: '#48cae4', ledRgb: '72,202,228',
+          primary: '#0096c7', primaryRgb: '0,150,199', primaryBorder: '#48cae4',
+          tw400: '45 212 191', tw600: '13 148 136', tw700: '15 118 110', tw900: '19 78 74',
+        },
+      },
+    };
+    const DEFAULT_TRIP = 'tokyo2026'; // 伺服器尚未回覆預設旅行前的暫用主題
+    let CUR = TRIPS[DEFAULT_TRIP];    // 目前生效的旅行設定（render 時讀取）
+
+    // 決定要顯示哪一趟：?trip= → 上次選擇 → （空字串時由伺服器預設解析）
+    let TRIP_ID = new URLSearchParams(window.location.search).get('trip') || localStorage.getItem('selectedTrip') || '';
 
     const TC = {
       plane:     { icon: '✈️', label: '飛機',   bg: 'bg-sky-50',     bd: 'border-sky-300',     tx: 'text-sky-700',     ln: 'border-sky-200' },
@@ -426,12 +515,72 @@
       walking:   { icon: '🚶', label: '步行',   bg: 'bg-stone-100',  bd: 'border-stone-300',   tx: 'text-stone-600',   ln: 'border-stone-300' },
       transport: { icon: '🚃', label: '交通',   bg: 'bg-cyan-50',    bd: 'border-cyan-300',    tx: 'text-cyan-700',    ln: 'border-cyan-200' },
     };
-    const DEF_ICONS = ['🏯','⛩️','🗼','🎌','🌸','🍣','🎎','🗾','🚅','🎐','🍱','🏔️'];
     const DEF_GRADS = ['from-rose-400 to-orange-300','from-violet-400 to-purple-300','from-cyan-400 to-blue-300','from-emerald-400 to-teal-300','from-amber-400 to-yellow-300','from-pink-400 to-fuchsia-300','from-indigo-400 to-sky-300','from-red-400 to-pink-300'];
 
     let isEditMode = false, cachedApiKey = null;
     let appData = { itinerary: [], flights: [], checklist: [], participants: [], expenses: [] };
-    window.onload = loadData;
+    window.onload = init;
+
+    // ===== 主題 / 旅行切換 =====
+    function applyTheme(t) {
+      const th = (TRIPS[t] || TRIPS[DEFAULT_TRIP]).theme;
+      const r = document.documentElement.style;
+      r.setProperty('--bg-grad', th.bgGrad);
+      r.setProperty('--score-grad', th.scoreGrad);
+      r.setProperty('--stripe', th.stripe);
+      r.setProperty('--accent', th.accent);
+      r.setProperty('--accent-rgb', th.accentRgb);
+      r.setProperty('--led', th.led);
+      r.setProperty('--led-rgb', th.ledRgb);
+      r.setProperty('--primary', th.primary);
+      r.setProperty('--primary-rgb', th.primaryRgb);
+      r.setProperty('--primary-border', th.primaryBorder);
+      r.setProperty('--c-primary-400', th.tw400);
+      r.setProperty('--c-primary-600', th.tw600);
+      r.setProperty('--c-primary-700', th.tw700);
+      r.setProperty('--c-primary-900', th.tw900);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta && th.themeColor) meta.setAttribute('content', th.themeColor);
+    }
+    function applyTexts(t) {
+      const tr = TRIPS[t] || TRIPS[DEFAULT_TRIP];
+      document.title = tr.title;
+      document.getElementById('hdr-led').textContent = tr.led;
+      document.getElementById('hdr-h1').textContent = tr.h1;
+      const sub = document.getElementById('hdr-sub');
+      if (tr.sub) { sub.textContent = tr.sub; sub.classList.remove('hidden'); }
+      else { sub.textContent = ''; sub.classList.add('hidden'); }
+      document.getElementById('hdr-divider').textContent = tr.divider;
+    }
+    function applyTrip(t) {
+      CUR = TRIPS[t] || TRIPS[DEFAULT_TRIP];
+      applyTheme(t); applyTexts(t);
+      const sel = document.getElementById('trip-select');
+      if (sel && TRIPS[t]) sel.value = t;
+    }
+    function buildTripDropdown() {
+      const sel = document.getElementById('trip-select');
+      sel.innerHTML = Object.entries(TRIPS).map(([id, tr]) => '<option value="'+id+'">'+escHtml(tr.name)+'</option>').join('');
+    }
+    function switchTrip(t) {
+      if (t === TRIP_ID) return;
+      TRIP_ID = t;
+      localStorage.setItem('selectedTrip', t);
+      const u = new URL(window.location.href); u.searchParams.set('trip', t); history.replaceState(null, '', u);
+      // 切換旅行時退出編輯模式（金鑰可能不適用於其他旅行）
+      isEditMode = false; cachedApiKey = null; updateEditUI();
+      currentDay = null;
+      applyTrip(t);
+      appData = { itinerary: [], flights: [], checklist: [], participants: [], expenses: [] };
+      document.getElementById('itinerary-container').innerHTML = '<div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div>';
+      loadData();
+    }
+    function init() {
+      buildTripDropdown();
+      applyTrip((TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : DEFAULT_TRIP);
+      loadData();
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+    }
 
     function apiPost(d) { return fetch(API_BASE, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(d) }).then(r=>r.json()); }
     function calcEnd(s,d) { if(!s||!d) return null; const m=s.match(/(\d{1,2}):(\d{2})/); if(!m) return null; const t=parseInt(m[1])*60+parseInt(m[2])+parseInt(d); return String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
@@ -451,17 +600,42 @@
     function autoTime(v) { v=v.replace(/[^0-9]/g,''); if(v.length===3) v='0'+v; if(v.length===4) return v.substring(0,2)+':'+v.substring(2,4); return v; }
 
     function loadData() {
-      const ck = 'cache_' + TRIP_ID;
-      const c = localStorage.getItem(ck);
-      if (c) { try { appData = JSON.parse(c); renderAll(); } catch(e){} }
+      let renderedFromCache = false;
+      if (TRIP_ID) {
+        const c = localStorage.getItem('cache_' + TRIP_ID);
+        if (c) { try { appData = JSON.parse(c); renderAll(); renderedFromCache = true; } catch(e){} }
+      }
+      const prevVer = TRIP_ID ? localStorage.getItem('ver_' + TRIP_ID) : null;
       const getUrl = API_BASE + (TRIP_ID ? '?trip=' + encodeURIComponent(TRIP_ID) : '');
       fetch(getUrl).then(r=>r.json()).then(resp => {
         if (resp.status === 'success') {
+          // 伺服器解析出的預設旅行（前端未指定 trip 時）
+          if (resp.resolvedTrip && resp.resolvedTrip !== TRIP_ID) {
+            TRIP_ID = resp.resolvedTrip;
+            localStorage.setItem('selectedTrip', TRIP_ID);
+            applyTrip(TRIP_ID);
+            renderedFromCache = false; // 主題與資料都換了，強制重繪
+          } else if (!TRIP_ID) {
+            // 伺服器未設定 Config.defaultTrip → 退回前端預設旅行，重新以正確 trip 抓取
+            TRIP_ID = DEFAULT_TRIP;
+            localStorage.setItem('selectedTrip', TRIP_ID);
+            applyTrip(TRIP_ID);
+            loadData();
+            return;
+          }
+          // TRIP_ID 已確定 → 嘗試用本機金鑰恢復登入（裝置 session）
+          tryRestoreAuth();
+          const newVer = resp.version != null ? String(resp.version) : null;
+          // 版本未變且已從快取繪製過 → 資料沒動，免二次重繪
+          if (renderedFromCache && newVer !== null && newVer === prevVer) return;
           appData = { itinerary: resp.itinerary||[], flights: resp.flights||[], checklist: resp.checklist||[], participants: resp.participants||[], expenses: resp.expenses||[] };
-          localStorage.setItem(ck, JSON.stringify(appData));
+          if (TRIP_ID) {
+            localStorage.setItem('cache_' + TRIP_ID, JSON.stringify(appData));
+            if (newVer !== null) localStorage.setItem('ver_' + TRIP_ID, newVer);
+          }
           renderAll();
-        }
-      }).catch(e => console.error('Fetch error:', e));
+        } else if (!renderedFromCache) { renderAll(); }
+      }).catch(e => { console.error('Fetch error:', e); if (!renderedFromCache) renderAll(); });
     }
 
     let currentDay = null; // track active day tab
@@ -492,6 +666,13 @@
       let autoDay = currentDay && sortedDays.includes(currentDay) ? currentDay : (sortedDays[0] || '');
       if (!currentDay) { for (const d of sortedDays) { if (dayDateMap[d] === todayStr) { autoDay = d; break; } } }
       if (!currentDay) currentDay = autoDay;
+      // Empty state: no items yet
+      if (sortedDays.length === 0) {
+        ct.innerHTML = isEditMode
+          ? '<div class="text-center py-16"><div class="text-5xl mb-4">'+(CUR.emptyEmoji||'📅')+'</div><p class="text-white/60 text-lg font-bold mb-4">行程表還是空的，開始規劃吧！</p><button onclick="openAddModal(\'\')" class="px-6 py-3 bg-primary-600 text-white rounded-full font-bold hover:bg-primary-700 transition text-lg">🎯 新增第一個行程</button></div>'
+          : '<div class="text-center py-16"><span class="spin-ball text-5xl">⚾</span><p class="text-white/50 text-lg font-bold mt-4 tracking-wide">尚無行程資料</p></div>';
+        return;
+      }
       sortedDays.forEach((day, idx) => {
         const tab = document.createElement('button');
         const isActive = day === autoDay;
@@ -506,7 +687,7 @@
         panel.className = 'day-panel' + (isActive?' active':''); panel.id = 'panel-' + CSS.escape(day);
         const hd = document.createElement('div'); hd.className = 'stitch-divider text-white mb-5 text-sm';
         const dateLabel = dayDateMap[day] ? '  ' + dayDateMap[day] : '';
-        hd.textContent = '⚾  '+day+dateLabel+'  ⚾'; panel.appendChild(hd);
+        hd.textContent = CUR.dayDivider[0]+'  '+day+dateLabel+'  '+CUR.dayDivider[1]; panel.appendChild(hd);
         const list = document.createElement('div');
         // Group items into sequential blocks; consecutive non-full-participant items = parallel block
         const blocks = groupParallelBlocks(days[day], allNames);
@@ -539,7 +720,7 @@
           const aa = document.createElement('div'); aa.className = 'flex justify-center gap-3 mt-5';
           const lid = days[day].length>0 ? days[day][days[day].length-1].ID : '';
           const let_ = days[day].length>0 ? getItemEndTime(days[day][days[day].length-1]) : '';
-          aa.innerHTML = '<button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'activity\',\''+esc(let_)+'\')" class="px-4 py-2 bg-red-600/80 text-white rounded-full text-sm font-bold hover:bg-red-600 transition">🎯 新增行程</button><button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'subway\',\''+esc(let_)+'\')" class="px-4 py-2 bg-sky-600/80 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition">🚃 新增交通</button>';
+          aa.innerHTML = '<button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'activity\',\''+esc(let_)+'\')" class="px-4 py-2 bg-primary-600/80 text-white rounded-full text-sm font-bold hover:bg-primary-600 transition">🎯 新增行程</button><button onclick="openAddModal(\''+esc(day)+'\',\''+esc(lid)+'\',\'subway\',\''+esc(let_)+'\')" class="px-4 py-2 bg-sky-600/80 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition">🚃 新增交通</button>';
           panel.appendChild(aa);
         }
         ct.appendChild(panel);
@@ -647,7 +828,7 @@
       // Col1: time — start biggest, duration, end, actual
       let c1 = '<div class="flex-shrink-0 text-center" style="min-width:62px">';
       if (item.Time) {
-        c1 += '<div class="text-red-600 font-black text-xl leading-tight">'+item.Time+'</div>';
+        c1 += '<div class="text-primary-700 font-black text-xl leading-tight">'+item.Time+'</div>';
         if (item.Duration) c1 += '<div class="text-gray-600 text-xs mt-1 font-semibold">'+item.Duration+'分</div>';
         if (et) c1 += '<div class="text-gray-600 text-xs font-medium">~'+et+'</div>';
         if (item.ActualEndTime) c1 += '<div class="text-green-600 text-xs font-semibold mt-0.5">🏁'+item.ActualEndTime+'</div>';
@@ -681,7 +862,8 @@
 
     function defThumb(idx) {
       const g = DEF_GRADS[idx % DEF_GRADS.length];
-      const ic = DEF_ICONS[idx % DEF_ICONS.length];
+      const icons = (CUR && CUR.icons) || ['📍'];
+      const ic = icons[idx % icons.length];
       return '<div class="w-14 h-14 rounded-xl flex-shrink-0 bg-gradient-to-br '+g+' flex items-center justify-center shadow-sm"><span class="text-2xl">'+ic+'</span></div>';
     }
     function imgFallback(el, idx) { el.outerHTML = defThumb(idx); }
@@ -869,16 +1051,31 @@
       document.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+CSS.escape(d)));
     }
 
+    // 用本機儲存的金鑰自動恢復登入（裝置 session）。對目前旅行靜默驗證，成功才進編輯模式。
+    // 驗證失敗不清除金鑰（可能只是不適用於這趟旅行，切回原本旅行仍可用）。
+    let authRestoreInFlight = false;
+    function tryRestoreAuth() {
+      if (isEditMode || authRestoreInFlight) return;
+      const k = localStorage.getItem('authKey');
+      if (!k || !TRIP_ID) return;
+      authRestoreInFlight = true;
+      apiPost({action:'verify',apiKey:k,tripId:TRIP_ID}).then(r=>{
+        if (r.status === 'success') { cachedApiKey=k; isEditMode=true; updateEditUI(); renderAll(); }
+      }).catch(()=>{}).finally(()=>{ authRestoreInFlight=false; });
+    }
+
     function toggleEditMode() {
-      if (isEditMode) { isEditMode=false; cachedApiKey=null; updateEditUI(); renderAll(); }
-      else { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-key').value=''; setTimeout(()=>document.getElementById('auth-key').focus(),100); }
+      if (isEditMode) {
+        // 退出 = 登出：清除本機金鑰，下次需重新輸入密碼
+        isEditMode=false; cachedApiKey=null; localStorage.removeItem('authKey'); updateEditUI(); renderAll();
+      } else { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-key').value=''; setTimeout(()=>document.getElementById('auth-key').focus(),100); }
     }
     function verifyPassword() {
       const k = document.getElementById('auth-key').value;
       if (!k) { showToast('請輸入密碼', true); return; }
       const b = document.getElementById('auth-btn'); b.innerText='驗證中...'; b.disabled=true;
       apiPost({action:'verify',apiKey:k,tripId:TRIP_ID}).then(r=>{
-        if(r.status==='success'){cachedApiKey=k;isEditMode=true;closeAuthModal();updateEditUI();renderAll();}else showToast('❌ '+r.message, true);
+        if(r.status==='success'){cachedApiKey=k;isEditMode=true;localStorage.setItem('authKey',k);closeAuthModal();updateEditUI();renderAll();}else showToast('❌ '+r.message, true);
       }).catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='🔑 驗證';b.disabled=false;document.getElementById('auth-key').value='';});
     }
     function updateEditUI() {
@@ -1004,7 +1201,12 @@
     function openAddModal(day, afterId, type, prevEndTime) {
       // Populate day select with existing days + "新增天數" option
       const sel = document.getElementById('add-day-select');
-      const existingDays = [...new Set(appData.itinerary.map(i=>i.Day).filter(Boolean))];
+      const existingDays = [...new Set(appData.itinerary.map(i=>i.Day).filter(Boolean))]
+        .sort((a, b) => {
+          const na = parseInt((a.match(/\d+/)||[0])[0])||0;
+          const nb = parseInt((b.match(/\d+/)||[0])[0])||0;
+          return na - nb || a.localeCompare(b);
+        });
       sel.innerHTML = existingDays.map(d => '<option value="'+escHtml(d)+'">'+escHtml(d)+'</option>').join('') + '<option value="__new__">➕ 新增天數...</option>';
       sel.value = day && existingDays.includes(day) ? day : (existingDays[0]||'__new__');
       onAddDayChange();
@@ -1031,8 +1233,34 @@
       const sel = document.getElementById('add-day-select').value;
       const isNew = sel === '__new__';
       document.getElementById('add-day-custom').classList.toggle('hidden', !isNew);
-      if (isNew) { document.getElementById('add-day-custom').focus(); document.getElementById('add-date').value=''; }
-      else { document.getElementById('add-date').value = getDayDateMap()[sel] || ''; }
+      if (isNew) {
+        document.getElementById('add-day-custom').focus();
+        const dayMap = getDayDateMap();
+        const entries = Object.entries(dayMap);
+        if (entries.length > 0) {
+          entries.sort((a, b) => {
+            const na = parseInt((a[0].match(/\d+/)||[0])[0])||0;
+            const nb = parseInt((b[0].match(/\d+/)||[0])[0])||0;
+            return nb - na;
+          });
+          const lastDate = entries[0][1];
+          const d = new Date(lastDate + 'T00:00:00');
+          d.setDate(d.getDate() + 1);
+          document.getElementById('add-date').value = d.toISOString().slice(0, 10);
+        } else {
+          document.getElementById('add-date').value = '';
+        }
+      } else {
+        document.getElementById('add-date').value = getDayDateMap()[sel] || '';
+      }
+      // 若目前選的是飛機，同步更新航班日期
+      if (document.getElementById('add-type').value === 'plane') {
+        const dt = document.getElementById('add-date').value;
+        if (dt) {
+          document.getElementById('add-flight-depart-date').value = dt;
+          document.getElementById('add-flight-arrive-date').value = dt;
+        }
+      }
     }
     function getAddDay() {
       const sel = document.getElementById('add-day-select').value;
@@ -1074,6 +1302,18 @@
       document.getElementById('add-activity-label').innerText = t==='activity'?'🎯 行程名稱':'📍 交通描述';
       document.getElementById('add-modal-title').innerText = t==='activity'?'➕ 新增行程':'🚃 新增交通';
       renderTransportIcons('add', t);
+      if (t === 'plane') {
+        const selDay = document.getElementById('add-day-select').value;
+        if (selDay && selDay !== '__new__') {
+          const dt = getDayDateMap()[selDay] || '';
+          if (dt) {
+            if (!document.getElementById('add-flight-depart-date').value)
+              document.getElementById('add-flight-depart-date').value = dt;
+            if (!document.getElementById('add-flight-arrive-date').value)
+              document.getElementById('add-flight-arrive-date').value = dt;
+          }
+        }
+      }
     }
     function closeAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
 
