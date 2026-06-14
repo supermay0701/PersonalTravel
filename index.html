@@ -597,7 +597,14 @@
       const provisional = (TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : (TRIPS[hint] ? hint : DEFAULT_TRIP);
       applyTrip(provisional);
       loadData();
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+      if ('serviceWorker' in navigator) {
+        // 新版 service worker 接管時自動重新載入一次，避免卡在舊版頁面
+        let swReloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (swReloaded) return; swReloaded = true; location.reload();
+        });
+        navigator.serviceWorker.register('sw.js').catch(()=>{});
+      }
     }
 
     function apiPost(d) { return fetch(API_BASE, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(d) }).then(r=>r.json()); }
