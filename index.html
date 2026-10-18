@@ -133,6 +133,21 @@
       <button class="main-tab" data-section="expenses" onclick="switchSection('expenses')"><span class="mt-icon">💰</span><span class="mt-label">帳務</span></button>
     </div>
     <div id="edit-indicator" class="hidden bg-green-600 text-white text-center text-xs py-1.5 font-bold rounded-lg mb-5 tracking-wide">✏️ 編輯模式已啟用 — 點擊 🔓 可退出</div>
+    <div id="data-status" role="status" class="text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4 hidden"></div>
+    <div id="november-info" class="hidden text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4">
+      <p>⚾ 11/03 皇子山 09:00 報到 · 11/09 藤崎台 08:30 報到（08:10～08:20 到場）</p>
+      <details class="mt-2"><summary class="cursor-pointer">行程說明與交通查核</summary>
+        <p class="mt-2">兩人 · 時間以日本時間為準。依 2026/10/18 提供文件整理；交通與休息時間為規劃估算，空白代表未定。除 11/01 住宿外，其餘訂單、班次與訂位仍須核對。參與者姓名尚未提供，預估花費未列入帳務。</p>
+        <p class="mt-2">球棒袋屬運動用品，JR 有免強制預約例外；使用最後排後方特大行李空間仍需預約對應座位。市電與產交巴士付款方式不同。</p>
+        <div class="flex flex-wrap gap-3 mt-2 underline">
+          <a href="https://railway.jr-central.co.jp/oversized-baggage/" target="_blank" rel="noopener">JR 行李規則</a>
+          <a href="https://www.sankobus.jp/bus/ap-limousine/jikoku/" target="_blank" rel="noopener">機場巴士時刻／票價</a>
+          <a href="https://www.superhotel.co.jp/s_hotels/otsu/" target="_blank" rel="noopener">大津住宿</a>
+          <a href="https://hotelsova.co.jp/namikizaka/" target="_blank" rel="noopener">SOVA 並木坂</a>
+        </div>
+      </details>
+      <button id="import-november" onclick="importNovember()" class="hidden mt-3 px-4 py-2 bg-primary-600 rounded-lg font-bold">將 11 月行程匯入 Google 試算表</button>
+    </div>
     <div id="section-itinerary" class="app-section">
       <div id="tab-bar" class="flex flex-nowrap gap-2 mb-6 overflow-x-auto hscroll px-1 py-1"></div>
       <div id="itinerary-container"><div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div></div>
@@ -466,6 +481,7 @@
     </div>
   </div>
 
+  <script src="data/november2026.js"></script>
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzvGV91AQJv5vdAGTYdgQq8sV1jqI4VWSIENUw2iZ0FDGGPaAI1vlYvYxvYKYYBTY1J/exec';
 
@@ -513,6 +529,18 @@
           tw400: '45 212 191', tw600: '13 148 136', tw700: '15 118 110', tw900: '19 78 74',
         },
       },
+    };
+    TRIPS['osaka-shiga-kumamoto202611'] = {
+      name:'🍁 大阪・滋賀・熊本 2026/11', title:'⚾ 大阪・滋賀・熊本 10 日棒球測試之旅',
+      led:'⚾ OSAKA · SHIGA · KUMAMOTO ⚾', h1:'大阪・滋賀・熊本 10 日棒球之旅',
+      sub:'2026.11.01 — 11.10 · 兩人 · 日本時間 JST', divider:'🍁 行程表 SCHEDULE ⚾',
+      dayDivider:['🍁','⚾'], emptyEmoji:'🍁', icons:['⚾','🍁','🏯','🚄','🍜','♨️','🧢','🛍️'],
+      theme:{ ...TRIPS.tokyo2026.theme, themeColor:'#352018',
+        bgGrad:'linear-gradient(180deg, #291c20 0%, #503023 48%, #24382d 100%)',
+        scoreGrad:'linear-gradient(135deg, #211821 0%, #42251c 100%)',
+        accent:'#e7b75c', accentRgb:'231,183,92', led:'#ffcd7d', ledRgb:'255,205,125',
+        primary:'#b64b32', primaryRgb:'182,75,50', primaryBorder:'#eea074',
+        tw400:'251 146 60', tw600:'194 65 12', tw700:'154 52 18', tw900:'124 45 18' }
     };
     const DEFAULT_TRIP = 'tokyo2026'; // 伺服器尚未回覆預設旅行前的暫用主題
     let CUR = TRIPS[DEFAULT_TRIP];    // 目前生效的旅行設定（render 時讀取）
@@ -571,6 +599,7 @@
     function applyTrip(t) {
       CUR = TRIPS[t] || TRIPS[DEFAULT_TRIP];
       applyTheme(t); applyTexts(t);
+      document.getElementById('november-info').classList.toggle('hidden', t !== 'osaka-shiga-kumamoto202611');
       const sel = document.getElementById('trip-select');
       if (sel && TRIPS[t]) sel.value = t;
     }
@@ -580,6 +609,7 @@
     }
     function switchTrip(t) {
       if (t === TRIP_ID) return;
+      ++authEpoch;
       TRIP_ID = t;
       localStorage.setItem('tripChoice', t); // 明確的使用者選擇，會被記住
       const u = new URL(window.location.href); u.searchParams.set('trip', t); history.replaceState(null, '', u);
@@ -589,6 +619,7 @@
       applyTrip(t);
       appData = { itinerary: [], flights: [], checklist: [], participants: [], expenses: [] };
       document.getElementById('itinerary-container').innerHTML = '<div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div>';
+      renderAll();
       loadData();
     }
     function init() {
@@ -607,7 +638,57 @@
       }
     }
 
-    function apiPost(d) { return fetch(API_BASE, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(d) }).then(r=>r.json()); }
+    let dataRequestId = 0, dataAbort = null, authEpoch = 0;
+    const WRITE_ACTIONS = new Set(['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip']);
+    function saveCache(trip, data) {
+      try { localStorage.setItem('cache_' + trip, JSON.stringify(data)); } catch(e) { console.warn('無法儲存離線快取', e); }
+    }
+    async function apiPost(d) {
+      const trip = d.tripId === undefined ? TRIP_ID : d.tripId;
+      if (WRITE_ACTIONS.has(d.action)) {
+        if (appData._preview && d.action !== 'importNovemberTrip') return {status:'error', message:'目前是文件預覽，請先匯入試算表再編輯'};
+        ++dataRequestId;
+        if (dataAbort) dataAbort.abort();
+      }
+      const response = await fetch(API_BASE, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({...d, tripId:trip})});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      if (trip !== TRIP_ID) return {status:'stale', message:'已切換旅程，請回原旅程確認操作結果'};
+      return result;
+    }
+    function refreshAfterWrite(result) {
+      if (!result.changes) { loadData(true); return; } // 舊版 GAS 相容
+      if (result.tripId !== TRIP_ID) return;
+      ++dataRequestId;
+      if (dataAbort) dataAbort.abort();
+      Object.assign(appData, result.changes);
+      delete appData._preview;
+      saveCache(TRIP_ID, appData);
+      // 回傳的只有受影響資料表，不能冒充完整快照的版本。
+      localStorage.removeItem('ver_' + TRIP_ID);
+      renderAll();
+      setDataStatus('已儲存至 Google 試算表');
+    }
+    function setDataStatus(message) {
+      const el = document.getElementById('data-status');
+      el.textContent = message;
+      el.classList.toggle('hidden', !message);
+    }
+    function updateImportUI() {
+      document.getElementById('import-november').classList.toggle('hidden', !(TRIP_ID === 'osaka-shiga-kumamoto202611' && isEditMode && appData._preview));
+    }
+    async function importNovember() {
+      const button = document.getElementById('import-november');
+      button.disabled = true; button.textContent = '匯入中…';
+      try {
+        const result = await apiPost({action:'importNovemberTrip', apiKey:cachedApiKey});
+        if (result.status !== 'success') throw new Error(result.message);
+        refreshAfterWrite(result);
+        showToast('11 月行程已匯入；已存在的項目保持原樣');
+      } catch(e) { showToast('匯入失敗：' + e.message + '（請確認新版 GAS 已部署）', true); }
+      finally { button.disabled = false; button.textContent = '將 11 月行程匯入 Google 試算表'; }
+    }
+
     function calcEnd(s,d) { if(!s||!d) return null; const m=s.match(/(\d{1,2}):(\d{2})/); if(!m) return null; const t=parseInt(m[1])*60+parseInt(m[2])+parseInt(d); return String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
     function esc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
     function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -624,45 +705,69 @@
     }
     function autoTime(v) { v=v.replace(/[^0-9]/g,''); if(v.length===3) v='0'+v; if(v.length===4) return v.substring(0,2)+':'+v.substring(2,4); return v; }
 
-    function loadData() {
-      // 即時渲染用的 trip：已確定的 TRIP_ID，否則用「上次伺服器解析出的預設」提示，避免閃動
-      const renderTrip = TRIP_ID || localStorage.getItem('defaultTripHint') || '';
+    async function loadData(force) {
+      const requestId = ++dataRequestId;
+      if (dataAbort) dataAbort.abort();
+      dataAbort = new AbortController();
+      const controller = dataAbort;
+      const requestedTrip = TRIP_ID;
+      const renderTrip = requestedTrip || localStorage.getItem('defaultTripHint') || '';
       let renderedTrip = '';
-      if (renderTrip) {
-        const c = localStorage.getItem('cache_' + renderTrip);
-        if (c) { try { appData = JSON.parse(c); renderAll(); renderedTrip = renderTrip; } catch(e){} }
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem('cache_' + renderTrip) || 'null'); } catch(e) {}
+      if (cached && Array.isArray(cached.itinerary)) {
+        appData = cached; renderAll(); renderedTrip = renderTrip;
+      } else if (renderTrip === 'osaka-shiga-kumamoto202611') {
+        appData = {...getNovemberTripSeed(), _preview:true};
+        renderAll(); renderedTrip = renderTrip;
       }
-      const getUrl = API_BASE + (TRIP_ID ? '?trip=' + encodeURIComponent(TRIP_ID) : '');
-      fetch(getUrl).then(r=>r.json()).then(resp => {
-        if (resp.status === 'success') {
-          // 未指定 trip 時，由伺服器 Config 解析出的預設旅行（DB 預設為準）
-          if (resp.resolvedTrip && resp.resolvedTrip !== TRIP_ID) {
-            TRIP_ID = resp.resolvedTrip;
-            localStorage.setItem('defaultTripHint', TRIP_ID); // 僅作下次的暫用提示，不當成使用者選擇
-            applyTrip(TRIP_ID);
-          } else if (!TRIP_ID) {
-            // 伺服器未設定 Config.defaultTrip → 退回提示或前端預設，重新以正確 trip 抓取
-            TRIP_ID = localStorage.getItem('defaultTripHint') || DEFAULT_TRIP;
-            applyTrip(TRIP_ID);
-            loadData();
-            return;
-          }
-          // TRIP_ID 已確定 → 嘗試用本機金鑰恢復登入（裝置 session）
-          tryRestoreAuth();
-          const newVer = resp.version != null ? String(resp.version) : null;
-          const prevVer = localStorage.getItem('ver_' + TRIP_ID);
-          // 已從「相同 trip」的快取繪製、且版本沒變 → 免二次重繪（無閃動）
-          if (renderedTrip === TRIP_ID && newVer !== null && newVer === prevVer) return;
-          appData = { itinerary: resp.itinerary||[], flights: resp.flights||[], checklist: resp.checklist||[], participants: resp.participants||[], expenses: resp.expenses||[] };
-          localStorage.setItem('cache_' + TRIP_ID, JSON.stringify(appData));
-          if (newVer !== null) localStorage.setItem('ver_' + TRIP_ID, newVer);
-          renderAll();
-        } else if (!renderedTrip) { renderAll(); }
-      }).catch(e => { console.error('Fetch error:', e); if (!renderedTrip) renderAll(); });
+      setDataStatus(appData._preview ? '文件行程預覽 · 尚未確認雲端匯入。解鎖後可匯入；班次與訂位仍待核對。' : '正在同步 Google 試算表…');
+      const params = new URLSearchParams();
+      if (requestedTrip) params.set('trip', requestedTrip);
+      const version = localStorage.getItem('ver_' + renderTrip);
+      if (!force && cached && !cached._preview && requestedTrip && version) params.set('version', version);
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      try {
+        const response = await fetch(API_BASE + '?' + params, {signal:controller.signal});
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const resp = await response.json();
+        if (requestId !== dataRequestId || requestedTrip !== TRIP_ID) return;
+        if (resp.status !== 'success') throw new Error(resp.message || '同步失敗');
+        if (!TRIP_ID) {
+          TRIP_ID = resp.resolvedTrip || localStorage.getItem('defaultTripHint') || DEFAULT_TRIP;
+          localStorage.setItem('defaultTripHint', TRIP_ID);
+          applyTrip(TRIP_ID);
+          if (!resp.resolvedTrip) { loadData(); return; }
+        }
+        if (resp.notModified && cached) {
+          setDataStatus('已與 Google 試算表同步'); tryRestoreAuth(); return;
+        }
+        const next = {itinerary:resp.itinerary||[], flights:resp.flights||[], checklist:resp.checklist||[], participants:resp.participants||[], expenses:resp.expenses||[]};
+        const empty = Object.values(next).every(rows => rows.length === 0);
+        if (TRIP_ID === 'osaka-shiga-kumamoto202611' && empty && (!cached || cached._preview)) {
+          appData = {...getNovemberTripSeed(), _preview:true};
+          localStorage.removeItem('ver_' + TRIP_ID);
+        } else {
+          const unchanged = renderedTrip === TRIP_ID && cached && !cached._preview && version && String(resp.version) === version;
+          appData = next;
+          saveCache(TRIP_ID, appData);
+          if (resp.version != null) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
+          else localStorage.removeItem('ver_' + TRIP_ID);
+          if (!unchanged) renderAll();
+        }
+        if (appData._preview) renderAll();
+        setDataStatus(appData._preview ? '文件行程預覽 · 尚未匯入 Google 試算表。解鎖後可匯入；班次與訂位仍待核對。' : '已與 Google 試算表同步');
+        tryRestoreAuth();
+      } catch(e) {
+        if (requestId !== dataRequestId) return;
+        if (!renderedTrip) renderAll();
+        setDataStatus(appData._preview ? '目前顯示文件預覽，雲端尚未連線。' : '暫時無法同步，顯示本機資料；請稍後重新整理。');
+      } finally { clearTimeout(timeout); }
     }
 
     let currentDay = null; // track active day tab
     function renderAll() {
+      updateImportUI();
       renderItinerary(appData.itinerary); renderFlights(appData.flights); renderChecklist(appData.checklist); renderExpenseReport();
     }
 
@@ -675,7 +780,7 @@
       // Sort each day's items by time (parse to minutes for correct numeric sort)
       Object.values(days).forEach(arr => arr.sort((a, b) => {
         const toMin = s => { const m = (s||'').match(/(\d{1,2}):(\d{2})/); return m ? parseInt(m[1])*60+parseInt(m[2]) : 9999; };
-        return toMin(a.Time) - toMin(b.Time);
+        return toMin(a.Time || a.ActualEndTime) - toMin(b.Time || b.ActualEndTime);
       }));
       const sortedDays = Object.keys(days).sort((a, b) => {
         const na = parseInt((a.match(/\d+/)||[0])[0])||0, nb = parseInt((b.match(/\d+/)||[0])[0])||0;
@@ -685,7 +790,7 @@
       const dayDateMap = {};
       items.forEach(i => { if(i.Day && i.Date) dayDateMap[i.Day] = i.Date; });
       // Determine which day to auto-select: keep current, then today's date, then first
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = new Date().toLocaleDateString('sv-SE', {timeZone:'Asia/Tokyo'});
       let autoDay = currentDay && sortedDays.includes(currentDay) ? currentDay : (sortedDays[0] || '');
       if (!currentDay) { for (const d of sortedDays) { if (dayDateMap[d] === todayStr) { autoDay = d; break; } } }
       if (!currentDay) currentDay = autoDay;
@@ -708,6 +813,9 @@
         tab.onclick = () => switchDay(day); tb.appendChild(tab);
         const panel = document.createElement('div');
         panel.className = 'day-panel' + (isActive?' active':''); panel.id = 'panel-' + CSS.escape(day);
+        panel.buildContent = () => {
+        if (panel.dataset.rendered) return;
+        panel.dataset.rendered = 'true';
         const hd = document.createElement('div'); hd.className = 'stitch-divider text-white mb-5 text-sm';
         const dateLabel = dayDateMap[day] ? '  ' + dayDateMap[day] : '';
         hd.textContent = CUR.dayDivider[0]+'  '+day+dateLabel+'  '+CUR.dayDivider[1]; panel.appendChild(hd);
@@ -749,6 +857,8 @@
         }
         panel.appendChild(list);
         if (isEditMode) panel.appendChild(makeAddBar('mt-5'));
+        };
+        if (isActive) panel.buildContent();
         ct.appendChild(panel);
       });
       // 把目前作用中的天數捲到可視範圍（天數多時橫向捲動列）
@@ -1076,6 +1186,8 @@
     }
     function switchDay(d) {
       currentDay = d;
+      const panel = document.getElementById('panel-' + CSS.escape(d));
+      if (panel && panel.buildContent) panel.buildContent();
       document.querySelectorAll('.day-tab').forEach(t=>t.classList.toggle('active',t.dataset.day===d));
       document.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+CSS.escape(d)));
       const at = document.querySelector('.day-tab.active');
@@ -1090,7 +1202,9 @@
       const k = localStorage.getItem('authKey');
       if (!k || !TRIP_ID) return;
       authRestoreInFlight = true;
+      const epoch = authEpoch;
       apiPost({action:'verify',apiKey:k,tripId:TRIP_ID}).then(r=>{
+        if (epoch !== authEpoch) return;
         if (r.status === 'success') { cachedApiKey=k; isEditMode=true; updateEditUI(); renderAll(); }
       }).catch(()=>{}).finally(()=>{ authRestoreInFlight=false; });
     }
@@ -1098,7 +1212,7 @@
     function toggleEditMode() {
       if (isEditMode) {
         // 退出 = 登出：清除本機金鑰，下次需重新輸入密碼
-        isEditMode=false; cachedApiKey=null; localStorage.removeItem('authKey'); updateEditUI(); renderAll();
+        ++authEpoch; isEditMode=false; cachedApiKey=null; localStorage.removeItem('authKey'); updateEditUI(); renderAll();
       } else { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-key').value=''; setTimeout(()=>document.getElementById('auth-key').focus(),100); }
     }
     function verifyPassword() {
@@ -1218,14 +1332,14 @@
         d.arriveTime = document.getElementById('edit-flight-arrive-time').value;
         d.bookingRef = document.getElementById('edit-flight-booking').value;
       }
-      apiPost(d).then(r=>{if(r.status==='success'){showToast(r.message);closeEditModal();loadData();}else showToast('錯誤：'+r.message, true);})
+      apiPost(d).then(r=>{if(r.status==='success'){showToast(r.message);closeEditModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);})
       .catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='⚾ 儲存';b.disabled=false;});
     }
 
     function deleteItem() {
       if (!confirm('確定要刪除此項目？此操作無法復原。')) return;
       apiPost({action:'delete',apiKey:cachedApiKey,id:document.getElementById('edit-id').value}).then(r=>{
-        if(r.status==='success'){showToast(r.message);closeEditModal();loadData();}else showToast('錯誤：'+r.message, true);
+        if(r.status==='success'){showToast(r.message);closeEditModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);
       }).catch(()=>showToast('網路錯誤', true));
     }
 
@@ -1422,7 +1536,7 @@
       apiPost(p).then(r=>{
         if(r.status==='success'){
           showToast('✅ '+r.message);
-          loadData();
+          refreshAfterWrite(r);
           // Reset fields for continuous add, pre-fill next start time
           const nextTime = calcEnd(prevTime, prevDur) || prevTime;
           ['add-activity','add-duration','add-map-url','add-image-url','add-note','add-expense'].forEach(id=>document.getElementById(id).value='');
@@ -1464,30 +1578,46 @@
         arriveDate:document.getElementById('flight-arrive-date').value, arriveTime:document.getElementById('flight-arrive-time').value,
         bookingRef:document.getElementById('flight-booking').value, note:document.getElementById('flight-note').value };
       if(id) d.id=id;
-      apiPost(d).then(r=>{if(r.status==='success'){showToast(r.message);closeFlightModal();loadData();}else showToast('錯誤：'+r.message, true);})
+      apiPost(d).then(r=>{if(r.status==='success'){showToast(r.message);closeFlightModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);})
       .catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='✈️ 儲存';b.disabled=false;});
     }
 
     function deleteFlight() {
       if(!confirm('確定要刪除此航班？')) return;
       apiPost({action:'deleteFlight',apiKey:cachedApiKey,id:document.getElementById('flight-id').value}).then(r=>{
-        if(r.status==='success'){showToast(r.message);closeFlightModal();loadData();}else showToast('錯誤：'+r.message, true);
+        if(r.status==='success'){showToast(r.message);closeFlightModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);
       }).catch(()=>showToast('網路錯誤', true));
     }
 
+    const pendingChecks = new Set();
     function toggleCheckItem(id) {
-      if(!isEditMode) return;
-      const item = appData.checklist.find(c=>c.ID===id); if(!item) return;
-      const was = item.Checked&&item.Checked.toUpperCase()==='TRUE';
-      item.Checked = was?'FALSE':'TRUE'; renderChecklist(appData.checklist);
-      apiPost({action:'toggleCheck',apiKey:cachedApiKey,id:id}).then(r=>{
-        if(r.status!=='success'){item.Checked=was?'TRUE':'FALSE';renderChecklist(appData.checklist);showToast('❌ '+r.message, true);}
-      }).catch(()=>{item.Checked=was?'TRUE':'FALSE';renderChecklist(appData.checklist);showToast('網路錯誤', true);});
+      if (!isEditMode || pendingChecks.has(TRIP_ID + ':' + id)) return;
+      if (appData._preview) { showToast('請先匯入試算表再勾選', true); return; }
+      const trip = TRIP_ID, pendingKey = trip + ':' + id;
+      const item = appData.checklist.find(c => c.ID === id); if (!item) return;
+      const was = item.Checked && item.Checked.toUpperCase() === 'TRUE';
+      pendingChecks.add(pendingKey);
+      item.Checked = was ? 'FALSE' : 'TRUE'; renderChecklist(appData.checklist);
+      apiPost({action:'toggleCheck', apiKey:cachedApiKey, id, checked:!was}).then(r => {
+        if (trip !== TRIP_ID) return;
+        if (r.status !== 'success') throw new Error(r.message);
+        // 僅套用本次項目，不蓋掉其他正在儲存中的樂觀勾選。
+        const confirmed = r.changes && r.changes.checklist.find(c => c.ID === id);
+        if (confirmed) item.Checked = confirmed.Checked;
+        localStorage.removeItem('ver_' + trip);
+      }).catch(e => {
+        if (trip !== TRIP_ID) return;
+        item.Checked = was ? 'TRUE' : 'FALSE';
+        renderChecklist(appData.checklist); showToast('儲存未確認，請重新整理核對：' + e.message, true);
+      }).finally(() => {
+        pendingChecks.delete(pendingKey);
+        if (trip === TRIP_ID && ![...pendingChecks].some(key => key.startsWith(trip + ':'))) saveCache(trip, appData);
+      });
     }
 
     function deleteCheckItem(id) {
       if(!confirm('確定要刪除此項目？')) return;
-      apiPost({action:'deleteCheck',apiKey:cachedApiKey,id:id}).then(r=>{if(r.status==='success')loadData();else showToast('錯誤：'+r.message, true);}).catch(()=>showToast('網路錯誤', true));
+      apiPost({action:'deleteCheck',apiKey:cachedApiKey,id:id}).then(r=>{if(r.status==='success')refreshAfterWrite(r);else showToast('錯誤：'+r.message, true);}).catch(()=>showToast('網路錯誤', true));
     }
 
     function openCheckModal() { document.getElementById('check-item').value=''; document.getElementById('check-modal').classList.remove('hidden'); setTimeout(()=>document.getElementById('check-item').focus(),100); }
@@ -1496,7 +1626,7 @@
       const v = document.getElementById('check-item').value; if(!v){showToast('請輸入項目名稱', true);return;}
       const b = document.getElementById('check-btn'); b.innerText='新增中...'; b.disabled=true;
       apiPost({action:'createCheck',apiKey:cachedApiKey,item:v,tripId:TRIP_ID}).then(r=>{
-        if(r.status==='success'){showToast(r.message);closeCheckModal();loadData();}else showToast('錯誤：'+r.message, true);
+        if(r.status==='success'){showToast(r.message);closeCheckModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);
       }).catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='➕ 新增';b.disabled=false;});
     }
 
@@ -1542,14 +1672,14 @@
       d.action = eid ? 'updateExpense' : 'createExpense';
       if (eid) d.id = eid;
       apiPost(d).then(r=>{
-        if(r.status==='success'){showToast(r.message);closeExpenseModal();loadData();}else showToast('錯誤：'+r.message, true);
+        if(r.status==='success'){showToast(r.message);closeExpenseModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);
       }).catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='💰 儲存';b.disabled=false;});
     }
     function deleteExpense() {
       const eid = document.getElementById('expense-id').value;
       if (!eid || !confirm('確定要刪除此費用項目？')) return;
       apiPost({action:'deleteExpense',apiKey:cachedApiKey,id:eid}).then(r=>{
-        if(r.status==='success'){showToast(r.message);closeExpenseModal();loadData();}else showToast('錯誤：'+r.message, true);
+        if(r.status==='success'){showToast(r.message);closeExpenseModal();refreshAfterWrite(r);}else showToast('錯誤：'+r.message, true);
       }).catch(()=>showToast('網路錯誤', true));
     }
 

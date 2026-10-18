@@ -7,18 +7,68 @@ const CK_COL = { ID:1, Item:2, Checked:3, TripID:4 };
 const PT_COL = { ID:1, Name:2, TripID:3 };
 const EX_COL = { ID:1, Day:2, Time:3, Category:4, Description:5, Amount:6, Currency:7, Payer:8, PayMethod:9, Participants:10, TripID:11, LinkedItineraryID:12 };
 
-// 全域資料版本號：任何寫入都會 +1，當作快取失效與前端「資料是否變動」的訊號
-function getDataGen() {
+// 全域／各旅程版本號與 5 分鐘時間桶，共同控制快取失效。
+function getDataGen(tripId) {
   const p = PropertiesService.getScriptProperties();
   let g = p.getProperty('dataGen');
   if (!g) { g = '1'; p.setProperty('dataGen', g); }
-  return g;
+  // 時間桶也會換版，未安裝 onEdit 觸發器時仍會在 5 分鐘內讀到人工改表。
+  return g + '.' + (p.getProperty('tripGen_' + (tripId || '')) || '0') + '.' + Math.floor(Date.now() / 300000);
 }
-function bumpDataGen() {
+function bumpDataGen(tripId) {
   const p = PropertiesService.getScriptProperties();
-  const g = (parseInt(p.getProperty('dataGen') || '0', 10) + 1).toString();
-  p.setProperty('dataGen', g);
-  return g;
+  const key = tripId ? 'tripGen_' + tripId : 'dataGen';
+  const g = (parseInt(p.getProperty(key) || '0', 10) + 1).toString();
+  p.setProperty(key, g);
+  return getDataGen(tripId);
+}
+
+// 綁定試算表的簡易觸發條件；人工編輯立即使快取失效，不新增授權範圍。
+function onEdit(e) {
+  if (e && e.range) invalidateSheetCache();
+}
+function invalidateSheetCache() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { bumpDataGen(); } finally { lock.releaseLock(); }
+}
+
+// 只合併相鄰且有提供的欄位，不覆寫其他儲存格或公式。
+function setFields_(sheet, row, columns, fields) {
+  const cells = Object.keys(fields).filter(k => fields[k] !== undefined)
+    .map(k => [columns[k], fields[k]]).sort((a, b) => a[0] - b[0]);
+  for (let i = 0; i < cells.length;) {
+    const start = cells[i][0], values = [cells[i++][1]];
+    while (i < cells.length && cells[i][0] === start + values.length) values.push(cells[i++][1]);
+    sheet.getRange(row, start, 1, values.length).setValues([values]);
+  }
+}
+
+const ACTION_TABLES = {
+  update: 'Itinerary', delete: 'Itinerary', updateFlight: 'FlightInfo', deleteFlight: 'FlightInfo',
+  toggleCheck: 'Checklist', deleteCheck: 'Checklist', updateExpense: 'Expense', deleteExpense: 'Expense'
+};
+const MUTATIONS = ['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip'];
+
+function resolveRequestTrip_(req) {
+  const table = ACTION_TABLES[req.action] || (req.afterId ? 'Itinerary' : '');
+  if (!table) return req.tripId || '';
+  const row = getSheetData(SpreadsheetApp.getActiveSpreadsheet(), table).find(r => r.ID === String(req.id || req.afterId));
+  if (!row) throw new Error('找不到指定的 ID');
+  if (req.tripId && req.tripId !== row.TripID) throw new Error('資料不屬於這趟旅程');
+  return row.TripID || '';
+}
+
+function getChangedTables_(req) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const names = /^(create|update|delete)$/.test(req.action) || req.action === 'importNovemberTrip'
+    ? { itinerary:SHEETS.ITINERARY, flights:SHEETS.FLIGHT, expenses:SHEETS.EXPENSE }
+    : /Flight$/.test(req.action) ? { flights:SHEETS.FLIGHT }
+    : /Expense$/.test(req.action) ? { expenses:SHEETS.EXPENSE } : { checklist:SHEETS.CHECKLIST };
+  if (req.action === 'importNovemberTrip') names.checklist = SHEETS.CHECKLIST;
+  const changes = {};
+  Object.keys(names).forEach(k => { changes[k] = getSheetData(ss, names[k]).filter(r => r.TripID === req.tripId); });
+  return changes;
 }
 
 // 讀 Config 工作表（Key / Value 兩欄）成物件。defaultTrip 控制前端未指定 trip 時的預設旅行。
@@ -36,17 +86,19 @@ function getConfig(ss) {
 
 function doGet(e) {
   let tripId = (e && e.parameter && e.parameter.trip) || '';
-  const gen = getDataGen();
   const cache = CacheService.getScriptCache();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // 前端未指定 trip → 用 Config 的 defaultTrip 解析（短 TTL，直接改試算表能較快生效）
   let resolvedTrip = '';
   if (!tripId) {
-    const dt = getConfig(ss).defaultTrip || '';
+    const dt = getConfig(SpreadsheetApp.getActiveSpreadsheet()).defaultTrip || '';
     if (dt) { tripId = dt; resolvedTrip = dt; }
   }
 
+  const gen = getDataGen(tripId);
+  if (e && e.parameter && e.parameter.version === gen) {
+    return ContentService.createTextOutput(JSON.stringify({status:'success', notModified:true, version:gen, resolvedTrip:tripId})).setMimeType(ContentService.MimeType.JSON);
+  }
   const cacheKey = 'data_' + tripId + '_' + gen + (resolvedTrip ? '_d' : '');
 
   // 命中快取：直接回傳，免讀 5 張表
@@ -55,6 +107,7 @@ function doGet(e) {
     return ContentService.createTextOutput(cached).setMimeType(ContentService.MimeType.JSON);
   }
 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   let itinerary = getSheetData(ss, SHEETS.ITINERARY);
   let flights = getSheetData(ss, SHEETS.FLIGHT);
   let checklist = getSheetData(ss, SHEETS.CHECKLIST);
@@ -73,9 +126,9 @@ function doGet(e) {
   };
   if (resolvedTrip) payload.resolvedTrip = resolvedTrip;
   const json = JSON.stringify(payload);
-  // 一般快取 6 小時；預設旅行解析結果用較短 TTL，讓改 Config 能較快生效。
+  // 快取最長 5 分鐘；人工修改未設定觸發器時也會定期更新。
   // 若 JSON 超過 CacheService 100KB 上限會丟例外，略過即可（仍正常回傳）。
-  try { cache.put(cacheKey, json, resolvedTrip ? 300 : 21600); } catch (err) {}
+  try { cache.put(cacheKey, json, 300); } catch (err) {}
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -94,11 +147,17 @@ function getSheetData(ss, name) {
 
 function doPost(e) {
   const output = ContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON);
+  let lock, req, writing = false;
   try {
-    const req = JSON.parse(e.postData.contents);
+    req = JSON.parse(e.postData.contents);
+    if (MUTATIONS.indexOf(req.action) !== -1) {
+      lock = LockService.getScriptLock();
+      if (!lock.tryLock(10000)) return output.setContent(JSON.stringify({status:'error', message:'目前有人正在儲存，請稍後再試'}));
+      req.tripId = resolveRequestTrip_(req);
+    }
     const user = authenticateUser(req.apiKey, req.tripId);
     if (!user) return output.setContent(JSON.stringify({ status: "error", message: "金鑰錯誤或無權限" }));
-    const MUTATING = { update:1, create:1, delete:1, createFlight:1, updateFlight:1, deleteFlight:1, toggleCheck:1, createCheck:1, deleteCheck:1, createExpense:1, updateExpense:1, deleteExpense:1 };
+    writing = MUTATIONS.indexOf(req.action) !== -1;
     let result;
     switch (req.action) {
       case 'verify':        result = output.setContent(JSON.stringify({ status: "success", message: "驗證成功，歡迎 " + user })); break;
@@ -116,13 +175,31 @@ function doPost(e) {
       case 'deleteExpense': result = handleDeleteRow(req, user, output, SHEETS.EXPENSE); break;
       case 'searchPlace':   result = handleSearchPlace(req, user, output); break;
       case 'fetchMapImage': result = handleFetchMapImage(req, user, output); break;
+      case 'importNovemberTrip':
+        if (req.tripId !== getNovemberTripSeed().tripId) throw new Error('匯入旅程不符');
+        result = output.setContent(JSON.stringify({status:'success', message:'11 月行程已匯入', imported:importNovemberTrip_(SpreadsheetApp.getActiveSpreadsheet())}));
+        break;
       default:              result = output.setContent(JSON.stringify({ status: "error", message: "未知操作" })); break;
     }
     // 任何寫入操作後遞增版本號，使快取失效、並通知前端資料已變動
-    if (MUTATING[req.action]) bumpDataGen();
+    if (writing) {
+      SpreadsheetApp.flush();
+      const payload = JSON.parse(result.getContent());
+      payload.version = bumpDataGen(req.tripId);
+      writing = false;
+      if (payload.status === 'success') {
+        payload.tripId = req.tripId;
+        payload.changes = getChangedTables_(req);
+      }
+      result.setContent(JSON.stringify(payload));
+    }
     return result;
   } catch (error) {
     return output.setContent(JSON.stringify({ status: "error", message: "系統錯誤: " + error.message }));
+  } finally {
+    try {
+      if (writing) { SpreadsheetApp.flush(); bumpDataGen(req.tripId); }
+    } finally { if (lock && lock.hasLock()) lock.releaseLock(); }
   }
 }
 
@@ -132,18 +209,20 @@ function handleUpdate(req, user, output) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
-      if (req.type !== undefined)          sheet.getRange(i+1, IT_COL.Type).setValue(req.type);
-      if (req.activity !== undefined)      sheet.getRange(i+1, IT_COL.Activity).setValue(req.activity);
-      if (req.time !== undefined)          sheet.getRange(i+1, IT_COL.Time).setValue(req.time);
-      if (req.duration !== undefined)      sheet.getRange(i+1, IT_COL.Duration).setValue(req.duration);
-      if (req.actualEndTime !== undefined) sheet.getRange(i+1, IT_COL.ActualEndTime).setValue(req.actualEndTime);
-      if (req.note !== undefined)          sheet.getRange(i+1, IT_COL.Note).setValue(req.note);
-      if (req.expense !== undefined)       sheet.getRange(i+1, IT_COL.Expense).setValue(req.expense);
-      if (req.currency !== undefined)      sheet.getRange(i+1, IT_COL.Currency).setValue(req.currency);
-      if (req.participants !== undefined) sheet.getRange(i+1, IT_COL.Participants).setValue(req.participants);
-      if (req.mapUrl !== undefined)        sheet.getRange(i+1, IT_COL.MapURL).setValue(req.mapUrl);
-      if (req.imageUrl !== undefined)      sheet.getRange(i+1, IT_COL.ImageURL).setValue(req.imageUrl);
-      if (req.date !== undefined)          sheet.getRange(i+1, IT_COL.Date).setValue(req.date);
+      setFields_(sheet, i+1, IT_COL, {
+        Type: req.type,
+        Activity: req.activity,
+        Time: req.time,
+        Duration: req.duration,
+        ActualEndTime: req.actualEndTime,
+        Note: req.note,
+        Expense: req.expense,
+        Currency: req.currency,
+        Participants: req.participants,
+        MapURL: req.mapUrl,
+        ImageURL: req.imageUrl,
+        Date: req.date
+      });
       // Sync Expense record
       var existingExpenseId = data[i][IT_COL.ExpenseID-1] ? data[i][IT_COL.ExpenseID-1].toString() : '';
       if (req.recordExpense) {
@@ -153,15 +232,17 @@ function handleUpdate(req, user, output) {
             var exData = exSheet.getDataRange().getValues();
             for (var ei = 1; ei < exData.length; ei++) {
               if (exData[ei][0].toString() === existingExpenseId) {
-                exSheet.getRange(ei+1, EX_COL.Day).setValue(req.day !== undefined ? req.day : data[i][IT_COL.Day-1]);
-                exSheet.getRange(ei+1, EX_COL.Time).setValue(req.time !== undefined ? req.time : data[i][IT_COL.Time-1]);
-                if (req.expenseCategory !== undefined) exSheet.getRange(ei+1, EX_COL.Category).setValue(req.expenseCategory);
-                exSheet.getRange(ei+1, EX_COL.Description).setValue(req.activity !== undefined ? req.activity : data[i][IT_COL.Activity-1]);
-                if (req.expense !== undefined)    exSheet.getRange(ei+1, EX_COL.Amount).setValue(req.expense);
-                if (req.currency !== undefined)   exSheet.getRange(ei+1, EX_COL.Currency).setValue(req.currency);
-                if (req.payer !== undefined)      exSheet.getRange(ei+1, EX_COL.Payer).setValue(req.payer);
-                if (req.payMethod !== undefined)  exSheet.getRange(ei+1, EX_COL.PayMethod).setValue(req.payMethod);
-                if (req.participants !== undefined) exSheet.getRange(ei+1, EX_COL.Participants).setValue(req.participants);
+                setFields_(exSheet, ei+1, EX_COL, {
+                  Day: req.day !== undefined ? req.day : data[i][IT_COL.Day-1],
+                  Time: req.time !== undefined ? req.time : data[i][IT_COL.Time-1],
+                  Category: req.expenseCategory,
+                  Description: req.activity !== undefined ? req.activity : data[i][IT_COL.Activity-1],
+                  Amount: req.expense,
+                  Currency: req.currency,
+                  Payer: req.payer,
+                  PayMethod: req.payMethod,
+                  Participants: req.participants
+                });
                 break;
               }
             }
@@ -193,16 +274,18 @@ function handleUpdate(req, user, output) {
             var flData = flSheet.getDataRange().getValues();
             for (var j = 1; j < flData.length; j++) {
               if (flData[j][0].toString() === flightId) {
-                if (req.flightNo !== undefined)      flSheet.getRange(j+1, FL_COL.FlightNo).setValue(req.flightNo);
-                if (req.airline !== undefined)        flSheet.getRange(j+1, FL_COL.Airline).setValue(req.airline);
-                if (req.departAirport !== undefined)  flSheet.getRange(j+1, FL_COL.DepartAirport).setValue(req.departAirport);
-                if (req.arriveAirport !== undefined)  flSheet.getRange(j+1, FL_COL.ArriveAirport).setValue(req.arriveAirport);
-                if (req.departDate !== undefined)     flSheet.getRange(j+1, FL_COL.DepartDate).setValue(req.departDate);
-                if (req.time !== undefined)           flSheet.getRange(j+1, FL_COL.DepartTime).setValue(req.time);
-                if (req.arriveDate !== undefined)     flSheet.getRange(j+1, FL_COL.ArriveDate).setValue(req.arriveDate);
-                if (req.arriveTime !== undefined)     flSheet.getRange(j+1, FL_COL.ArriveTime).setValue(req.arriveTime);
-                if (req.bookingRef !== undefined)     flSheet.getRange(j+1, FL_COL.BookingRef).setValue(req.bookingRef);
-                if (req.note !== undefined)           flSheet.getRange(j+1, FL_COL.Note).setValue(req.note);
+                setFields_(flSheet, j+1, FL_COL, {
+                  FlightNo: req.flightNo,
+                  Airline: req.airline,
+                  DepartAirport: req.departAirport,
+                  ArriveAirport: req.arriveAirport,
+                  DepartDate: req.departDate,
+                  DepartTime: req.time,
+                  ArriveDate: req.arriveDate,
+                  ArriveTime: req.arriveTime,
+                  BookingRef: req.bookingRef,
+                  Note: req.note
+                });
                 break;
               }
             }
@@ -323,16 +406,18 @@ function handleUpdateFlight(req, user, output) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
-      if (req.flightNo !== undefined)      sheet.getRange(i+1, FL_COL.FlightNo).setValue(req.flightNo);
-      if (req.airline !== undefined)        sheet.getRange(i+1, FL_COL.Airline).setValue(req.airline);
-      if (req.departAirport !== undefined)  sheet.getRange(i+1, FL_COL.DepartAirport).setValue(req.departAirport);
-      if (req.arriveAirport !== undefined)  sheet.getRange(i+1, FL_COL.ArriveAirport).setValue(req.arriveAirport);
-      if (req.departDate !== undefined)     sheet.getRange(i+1, FL_COL.DepartDate).setValue(req.departDate);
-      if (req.departTime !== undefined)     sheet.getRange(i+1, FL_COL.DepartTime).setValue(req.departTime);
-      if (req.arriveDate !== undefined)     sheet.getRange(i+1, FL_COL.ArriveDate).setValue(req.arriveDate);
-      if (req.arriveTime !== undefined)     sheet.getRange(i+1, FL_COL.ArriveTime).setValue(req.arriveTime);
-      if (req.bookingRef !== undefined)     sheet.getRange(i+1, FL_COL.BookingRef).setValue(req.bookingRef);
-      if (req.note !== undefined)           sheet.getRange(i+1, FL_COL.Note).setValue(req.note);
+      setFields_(sheet, i+1, FL_COL, {
+        FlightNo: req.flightNo,
+        Airline: req.airline,
+        DepartAirport: req.departAirport,
+        ArriveAirport: req.arriveAirport,
+        DepartDate: req.departDate,
+        DepartTime: req.departTime,
+        ArriveDate: req.arriveDate,
+        ArriveTime: req.arriveTime,
+        BookingRef: req.bookingRef,
+        Note: req.note
+      });
       return output.setContent(JSON.stringify({ status: "success", message: "航班更新成功" }));
     }
   }
@@ -346,7 +431,8 @@ function handleToggleCheck(req, user, output) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
       const cur = data[i][CK_COL.Checked - 1].toString().toUpperCase();
-      sheet.getRange(i+1, CK_COL.Checked).setValue(cur === 'TRUE' ? 'FALSE' : 'TRUE');
+      const checked = req.checked === undefined ? cur !== 'TRUE' : req.checked === true;
+      sheet.getRange(i+1, CK_COL.Checked).setValue(checked ? 'TRUE' : 'FALSE');
       return output.setContent(JSON.stringify({ status: "success", message: "狀態已切換" }));
     }
   }
@@ -375,15 +461,17 @@ function handleUpdateExpense(req, user, output) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
-      if (req.day !== undefined)         sheet.getRange(i+1, EX_COL.Day).setValue(req.day);
-      if (req.time !== undefined)        sheet.getRange(i+1, EX_COL.Time).setValue(req.time);
-      if (req.category !== undefined)    sheet.getRange(i+1, EX_COL.Category).setValue(req.category);
-      if (req.description !== undefined) sheet.getRange(i+1, EX_COL.Description).setValue(req.description);
-      if (req.amount !== undefined)      sheet.getRange(i+1, EX_COL.Amount).setValue(req.amount);
-      if (req.currency !== undefined)    sheet.getRange(i+1, EX_COL.Currency).setValue(req.currency);
-      if (req.payer !== undefined)       sheet.getRange(i+1, EX_COL.Payer).setValue(req.payer);
-      if (req.payMethod !== undefined)   sheet.getRange(i+1, EX_COL.PayMethod).setValue(req.payMethod);
-      if (req.participants !== undefined) sheet.getRange(i+1, EX_COL.Participants).setValue(req.participants);
+      setFields_(sheet, i+1, EX_COL, {
+        Day: req.day,
+        Time: req.time,
+        Category: req.category,
+        Description: req.description,
+        Amount: req.amount,
+        Currency: req.currency,
+        Payer: req.payer,
+        PayMethod: req.payMethod,
+        Participants: req.participants
+      });
       return output.setContent(JSON.stringify({ status: "success", message: "費用更新成功" }));
     }
   }
@@ -452,11 +540,12 @@ function handleFetchMapImage(req, user, output) {
 function authenticateUser(key, tripId) {
   if (!key) return null;
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.AUTH);
+  if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const rowKey = data[i][1].toString();
     const rowTrip = data[i][2] ? data[i][2].toString() : '';
-    if (key === rowKey && (!tripId || !rowTrip || tripId === rowTrip)) return data[i][0];
+    if (key === rowKey && (!rowTrip || tripId === rowTrip)) return data[i][0];
   }
   return null;
 }

@@ -3,3 +3,12 @@ index_backup.html
 
 # Screenshots (optional, large files)
 pic/
+
+# Local Google authorization / deployment binding (never commit tokens)
+.clasp.json
+.clasprc.json
+.clasprc.*.json
+appsscript.json
+.gas-backup/
+node_modules/
+.tmp/

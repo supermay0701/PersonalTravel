@@ -1,8 +1,8 @@
 // 旅遊行程 PWA service worker
 // 策略：app shell（index.html / icon / manifest）與 CDN 資源快取，讓離線也能開頁；
 // GAS API 一律走網路（資料新鮮度由前端 localStorage + version 控制）。
-const CACHE = 'travel-shell-v2';
-const CORE = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'travel-shell-v3';
+const CORE = ['./', './index.html', './manifest.json', './icon.svg', './data/november2026.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -31,6 +31,14 @@ self.addEventListener('fetch', e => {
         .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', cp)); return r; })
         .catch(() => caches.match(req).then(m => m || caches.match('./index.html')))
     );
+    return;
+  }
+
+  if (url.pathname.endsWith('/data/november2026.js')) {
+    e.respondWith(fetch(req, {cache:'no-store'}).then(r => {
+      if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return r;
+    }).catch(() => caches.match(req)));
     return;
   }
 

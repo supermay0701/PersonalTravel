@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A personal travel-itinerary web app. There is **no build system, no package manager, no tests, and no local server**. The repo is just:
+A personal travel-itinerary web app. There is **no build system or required package manager**. Run regression tests with `node --test tests/gas.test.cjs tests/frontend.test.cjs`; use a local static server for browser checks. The repo is just:
 
 - `index.html` — the **single** self-contained front-end (HTML + inline `<style>` + Tailwind via CDN + vanilla JS in one `<script>`). It serves **all** trips: a `TRIPS` registry near the top of the `<script>` holds each trip's theme + header text, a dropdown switches between them, and the theme is applied via CSS variables. Adding a trip = adding one entry to `TRIPS` (no new file).
 - `Hokkaido2026.html` — a tiny redirect to `index.html?trip=hokkaido202606`, kept only so old bookmarks/links still work.
-- `Code.gs` — the Google Apps Script (GAS) backend. **This file is not run from the repo.** It must be copied into the GAS editor bound to the backing Google Sheet and re-deployed as a Web App for changes to take effect.
+- `Code.gs` — the Google Apps Script (GAS) backend. **This file is not run from the repo.** Sync it (plus `ImportNovember.gs` and `data/november2026.js`) with clasp or the GAS editor, then update the existing Web App deployment version. See README.md for backup and sync steps.
 - `manifest.json`, `sw.js`, `icon.svg` — PWA assets (installable + offline app shell). `index.html` links the manifest, registers `sw.js`, and updates the `theme-color` meta per trip. The service worker caches the app shell + CDN assets but **never** caches the GAS endpoint (data freshness stays with the front-end's `localStorage` + `version`). `icon.svg` is used for both the manifest icon and `apple-touch-icon`; iOS may prefer a PNG — add one later if needed.
+- `data/november2026.js` — shared November seed for browser preview and idempotent GAS import; unknown times stay blank, estimates are not expenses.
+- `ImportNovember.gs` — validates existing headers and inserts only missing seed IDs.
+- `tests/` — Node built-in tests with mocked GAS services; never writes production data.
+- `.claspignore` — explicit GAS upload allowlist; actual `.clasp.json`, credentials, remote manifest and backups are ignored.
 - `pic/` — reference screenshots (gitignored).
 
 To preview the front-end, open `index.html` directly in a browser (or via GitHub Pages). It will hit the live GAS endpoint immediately.
@@ -25,7 +29,7 @@ index.html (this repo)  →  GAS Web App / Code.gs  →  Google Sheets (7 tabs)
 
 - **Frontend**: `doGet` returns all rows for a trip as JSON plus a `version` field; the page caches data in `localStorage` (`cache_<TRIP_ID>`) and the version in `ver_<TRIP_ID>`, renders the cache instantly on load, then refetches. If the returned `version` matches the cached one, the second re-render is skipped (no flicker). All writes go through `apiPost` → `doPost`, distinguished by an `action` field. POSTs use `Content-Type: text/plain` to dodge a CORS preflight against the GAS endpoint.
 - **Trip selection**: `TRIP_ID` (a `let`) resolves in order: URL `?trip=` → `localStorage.selectedTrip` → server default. When the front-end sends no trip, `doGet` reads `Config.defaultTrip` and returns the chosen trip's data with a `resolvedTrip` field; the front-end adopts it, persists it to `localStorage.selectedTrip`, and applies that trip's theme. The dropdown (`switchTrip`) writes `selectedTrip`, updates the URL, exits edit mode, and reloads.
-- **Caching / speed**: `doGet` is cached in `CacheService` keyed by trip + a global `dataGen` version (in `ScriptProperties`). Any mutating `doPost` calls `bumpDataGen()`, which invalidates every trip's cache and bumps the `version` the front-end sees. The `Config.defaultTrip` resolution path uses a shorter cache TTL so editing it in the Sheet propagates within minutes.
+- **Caching / speed**: `doGet` uses global + per-trip generations and a five-minute time bucket. A matching `?version=` returns `notModified` without opening Sheets. Explicit-trip cache hits also avoid opening Sheets. Mutations lock, validate the target record's actual trip, bump only that trip, and return affected tables in `changes`. The front-end merges these instead of doing another GET (older responses fall back to a forced GET). A manual-edit trigger can invalidate immediately; time buckets cover edits without the trigger. Day cards render lazily, and stale requests are ignored.
 - **Auth**: Edit mode and the expense report require a key that is verified row-by-row against the `Auth` sheet (`authenticateUser` in `Code.gs`); the key is sent with every mutating request. A blank `TripID` in the `Auth` row grants access to all trips. **Device session (persisted login)**: on a successful verify the key is saved to `localStorage.authKey`; on load (and after a trip switch) `tryRestoreAuth()` silently re-verifies it against the current trip and re-enters edit mode if valid, so a reload doesn't log you out. A failed silent verify does **not** clear the key (it may simply not apply to that trip). Clicking the unlock 🔓 button is an explicit logout — it clears `authKey`. The key is plaintext in `localStorage`, which is acceptable for this personal app (see the equivalent risk discussion: only same-device/XSS access).
 - **Backing sheet**: The core data schema (Itinerary, FlightInfo, Checklist, Auth, Participants, Expense) and every column is documented in detail in `.github/copilot-instructions.md` — read that before touching column logic. A 7th `Config` tab (two columns: `Key`, `Value`) holds app settings; `defaultTrip` selects which trip shows when no `?trip=` is given. The column-index constants at the top of `Code.gs` (`IT_COL`, `FL_COL`, `CK_COL`, `PT_COL`, `EX_COL`) are 1-based and **must match the physical column order in the Sheet**.
 
@@ -39,5 +43,5 @@ index.html (this repo)  →  GAS Web App / Code.gs  →  Google Sheets (7 tabs)
 
 ## Making changes effective
 
-- Editing `Code.gs` in the repo does nothing until it is pasted into the GAS project and a **new Web App version** is deployed (Deploy → Manage deployments → Edit → new version). Note this in any PR that touches `Code.gs`.
+- Editing GAS files in the repo does nothing until they are synced to the GAS project and a **new Web App version** is deployed (Deploy → Manage deployments → Edit → new version). Note this in any PR that touches `Code.gs`.
 - `PLACES_API_KEY` in `Code.gs` is intentionally blank; when empty, place search degrades to generating a Google Maps search URL instead of calling the Places API.
