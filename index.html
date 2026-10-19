@@ -110,6 +110,14 @@
     #trip-select { background: rgba(0,0,0,0.4); color: #fff; }
     #trip-select:hover { background: rgba(0,0,0,0.55); }
     #trip-select option { background: #15192e; color: #fff; }
+    /* Daily timeline and expandable transport cards */
+.timeline{position:relative;padding-left:23px}.timeline:before{content:'';position:absolute;left:6px;top:24px;bottom:24px;width:2px;background:rgba(var(--accent-rgb),.25)}.timeline-item{position:relative;margin-bottom:15px}.timeline-item:before{content:'';position:absolute;left:-21px;top:25px;width:10px;height:10px;border:2px solid var(--accent);border-radius:50%;background:var(--primary);z-index:1}.timeline-item.is-transport:before{width:6px;height:6px;left:-19px;top:27px;border-color:#d8c4ab;background:#d8c4ab}.timeline-caption{font-size:11px;color:#ffffff70;text-align:center;line-height:1.8;margin-top:20px}
+.transport-card{border:2px dashed var(--tr-border);background:var(--tr-bg);border-radius:12px;overflow:hidden;margin:0 4px;color:#1a3a5c}.transport-card summary{display:flex;align-items:center;gap:12px;padding:12px 15px;cursor:pointer;list-style:none}.transport-card summary::-webkit-details-marker{display:none}.transport-icon{font-size:25px;flex-shrink:0}.transport-summary{flex:1;min-width:0}.transport-time{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.transport-time strong{font-size:17px;font-weight:800}.transport-time strong span{font-size:13px;color:#8da8c8;padding:0 3px}.transport-time small{font-size:12px;color:#667b91}.transport-summary h3{color:var(--tr-ink);font-size:15px;line-height:1.5;font-weight:700;margin:3px 0 0;overflow-wrap:anywhere}.expand-label{font-size:11px;flex-shrink:0;color:#667085}.open-label{display:none}.transport-card[open] .open-label{display:inline}.transport-card[open] .closed-label{display:none}.chevron{display:inline-block;transition:transform .15s}.transport-card[open] .chevron{transform:rotate(180deg)}.transport-content{border-top:1px dashed var(--tr-border);margin:0 15px;padding:13px 0 15px;font-size:13px;line-height:1.7}.transport-content dl>div{display:grid;grid-template-columns:64px 1fr;gap:12px;margin-bottom:8px}.transport-content dt{color:#64748b}.transport-content dd{color:#334155;margin:0}.transport-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.transport-links a{color:var(--tr-ink);background:#ffffffb3;border:1px solid var(--tr-border);padding:4px 9px;border-radius:6px;font-size:12px;text-decoration:none}.transport-links a:hover{background:white}
+
+.transport-wrap{position:relative}.transport-edit{position:absolute;top:10px;right:12px;z-index:2;background:white;border:1px solid #d1d5db;border-radius:6px;padding:3px 7px;color:#4b5563;font-size:12px}.transport-wrap.editable summary{padding-right:70px}.transport-expense{font-size:12px;color:#ef4444;font-weight:700}.activity-title{overflow-wrap:anywhere}.activity-map-label{display:block;text-align:center;font-size:10px;color:#9a3412;margin-top:3px}
+@media(max-width:600px){.timeline{padding-left:16px}.timeline:before{left:3px}.timeline-item:before{left:-17px}.timeline-item.is-transport:before{left:-15px}.transport-card{margin:0}.transport-card summary{padding:11px 10px;gap:8px}.transport-icon{font-size:21px}.transport-time{gap:4px 8px}.transport-time strong{font-size:15px}.transport-time small{font-size:10px}.transport-summary h3{font-size:13px}.expand-label{font-size:10px}.transport-content{font-size:12px;margin:0 11px}.transport-content dl>div{grid-template-columns:54px 1fr;gap:8px}.timeline .schedule-card{padding:10px}.activity-title{font-size:15px}.activity-note{font-size:12px}.activity-thumb img,.activity-thumb>div{width:36px;height:36px}.activity-time{min-width:50px!important}.activity-time .text-xl{font-size:17px}.activity-time .text-xs{font-size:11px}}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.transport-card .chevron{transition:none}}
   </style>
 </head>
 <body>
@@ -831,6 +839,7 @@
         };
         if (isEditMode) panel.appendChild(makeAddBar('mb-4'));
         const list = document.createElement('div');
+        list.className = 'timeline';
         // Group items into sequential blocks; consecutive non-full-participant items = parallel block
         const blocks = groupParallelBlocks(days[day], allNames);
         let prevBlock = null;
@@ -842,15 +851,17 @@
             const currIsTr = block.length === 1 && isTr(currFirst.Type);
             if (!prevIsTr && !currIsTr) {
               if (isEditMode) { list.appendChild(createInsertPoint(day, prevLast.ID, getItemEndTime(prevLast))); }
-              else { list.appendChild(createConnector()); }
             }
           }
+          const entry = document.createElement('div');
+          entry.className = 'timeline-item' + (block.length === 1 && isTr(block[0].Type) ? ' is-transport' : '');
           if (block.length === 1) {
             const item = block[0];
-            list.appendChild(isTr(item.Type) ? createTransportCard(item) : createActivityCard(item, bi));
+            entry.appendChild(isTr(item.Type) ? createTransportCard(item) : createActivityCard(item, bi));
           } else {
-            list.appendChild(createParallelBlock(block, bi));
+            entry.appendChild(createParallelBlock(block, bi));
           }
+          list.appendChild(entry);
           prevBlock = block;
         });
         if (isEditMode && days[day].length > 0) {
@@ -858,6 +869,10 @@
           list.appendChild(createInsertPoint(day, lastItem.ID, getItemEndTime(lastItem)));
         }
         panel.appendChild(list);
+        const caption = document.createElement('p');
+        caption.className = 'timeline-caption';
+        caption.textContent = '依行程時間排序 · 時間未定項目列於當日最後 · 點交通卡查看完整提醒';
+        panel.appendChild(caption);
         if (isEditMode) panel.appendChild(makeAddBar('mt-5'));
         };
         if (isActive) panel.buildContent();
@@ -967,19 +982,20 @@
       // Edit button
       let editH = isEditMode ? '<button onclick="openEditModal(\''+esc(item.ID)+'\')" class="absolute top-2 right-2 bg-red-50 text-red-600 border border-red-200 w-7 h-7 rounded-lg hover:bg-red-600 hover:text-white transition text-xs font-bold z-10">✏️</button>' : '';
       // Col1: time — start biggest, duration, end, actual
-      let c1 = '<div class="flex-shrink-0 text-center" style="min-width:62px">';
+      let c1 = '<div class="activity-time flex-shrink-0 text-center" style="min-width:62px">';
       if (item.Time) {
         c1 += '<div class="text-primary-700 font-black text-xl leading-tight">'+item.Time+'</div>';
         if (item.Duration) c1 += '<div class="text-gray-600 text-xs mt-1 font-semibold">'+item.Duration+'分</div>';
         if (et) c1 += '<div class="text-gray-600 text-xs font-medium">~'+et+'</div>';
         if (item.ActualEndTime) c1 += '<div class="text-green-600 text-xs font-semibold mt-0.5">🏁'+item.ActualEndTime+'</div>';
       }
+      if (!item.Time) c1 += '<div class="text-gray-500 text-xs">時間未定</div>';
       c1 += '</div>';
       // Col2: place name (big) + note below (no emoji, hide if empty)
-      let noteH = item.Note ? '<div class="text-gray-600 text-sm mt-0.5 leading-snug">'+item.Note+'</div>' : '';
+      let noteH = item.Note ? '<div class="activity-note text-gray-600 text-sm mt-0.5 leading-snug">'+escHtml(item.Note)+'</div>' : '';
       let ptBadge = fmtParticipantBadge(item.Participants);
       let c2 = '<div class="flex-1 min-w-0">'
-        + '<div class="text-gray-900 font-bold text-lg leading-snug truncate">'+(item.Activity||'')+'</div>'
+        + '<div class="activity-title text-gray-900 font-bold text-lg leading-snug">'+escHtml(item.Activity||'')+'</div>'
         + noteH + ptBadge + '</div>';
       // Col3: expense centered
       let c3 = '<div class="flex-shrink-0 text-center" style="min-width:52px">';
@@ -987,6 +1003,7 @@
         c3 += '<div class="text-red-500 font-bold text-sm leading-tight">'+fmtExp(item.Expense, item.Currency)+'</div>';
       }
       c3 += '</div>';
+      if (!item.Expense) c3 = '';
       // Col4: thumbnail — clickable if MapURL
       let thumbInner;
       if (item.ImageURL) {
@@ -995,7 +1012,7 @@
         thumbInner = defThumb(idx);
       }
       let c4 = item.MapURL
-        ? '<a href="'+escHtml(item.MapURL)+'" target="_blank" rel="noopener" class="flex-shrink-0 block">'+thumbInner+'</a>'
+        ? '<a href="'+escHtml(item.MapURL)+'" target="_blank" rel="noopener" class="activity-thumb flex-shrink-0 block" aria-label="Google Maps">'+thumbInner+'<small class="activity-map-label">地圖 ↗</small></a>'
         : '<div class="flex-shrink-0">'+thumbInner+'</div>';
       card.innerHTML = '<div class="relative">'+editH+'<div class="flex items-center gap-2.5">'+c1+'<div class="w-px self-stretch bg-gray-200"></div>'+c2+c3+c4+'</div></div>';
       return card;
@@ -1009,26 +1026,56 @@
     }
     function imgFallback(el, idx) { el.outerHTML = defThumb(idx); }
 
+    // Supplemental official links only. Times, duration, notes and expenses always use appData.
+    function getTransportInfo(item) {
+      const info = { service: gtc(item.Type).label, links: [] };
+      if (item.TripID !== 'osaka-shiga-kumamoto202611') return info;
+      const activity = item.Activity || '';
+      if (item.Type === 'train' && /HARUKA/i.test(activity)) {
+        info.service = '關空特急 HARUKA';
+        info.links = [['HARUKA 票券','https://www.westjr.co.jp/travel-information/en/tickets-passes/oneway/haruka/']];
+      } else if (item.Type === 'train' && /さくら|新幹線/.test(activity)) {
+        info.service = activity.includes('｜') ? activity.split('｜').slice(1).join('｜') : '新幹線';
+        info.links = [['SmartEX','https://smart-ex.jp/'],['JR 行李規則','https://railway.jr-central.co.jp/oversized-baggage/']];
+      } else if (item.Type === 'train' && /JR|新快速/.test(activity)) {
+        info.service = /新快速/.test(activity) ? 'JR 新快速' : 'JR';
+        info.links = [['JR 西日本','https://www.westjr.co.jp/']];
+      } else if (item.Type === 'subway' && /市電|通町筋|水前寺/.test(activity)) {
+        info.service = '熊本市電';
+        info.links = [['熊本市交通局','https://www.kotsu-kumamoto.jp/']];
+      } else if (item.Type === 'bus' && /熊本機場/.test(activity)) {
+        info.service = '阿蘇熊本機場利木津巴士';
+        info.links = [['機場巴士時刻／票價','https://www.sankobus.jp/bus/ap-limousine/jikoku/']];
+      } else if (item.Type === 'plane' && /IT212|IT795/.test(activity)) {
+        info.links = [['台灣虎航','https://www.tigerairtw.com/']];
+      }
+      return info;
+    }
     function createTransportCard(item) {
-      const c = gtc(item.Type);
-      const et = getItemEndTime(item);
-      const div = document.createElement('div');
-      div.className = 'rounded-xl border-2 border-dashed '+c.bd+' '+c.bg+' mx-1 -my-1 px-4 py-2 flex items-center gap-3 transition hover:shadow-md relative z-[1]';
-      // single row with color hierarchy: time(bold dark) · duration(medium) · arrival(medium) · name(bold dark) · note(light) · expense(red)
-      let parts = '';
-      if (item.Time) parts += '<span class="font-black text-base whitespace-nowrap" style="color:#1a3a5c">'+item.Time+'</span>';
-      if (item.Duration) parts += '<span class="text-sm font-semibold whitespace-nowrap" style="color:#6b8bb5">'+item.Duration+'分</span>';
-      if (et) parts += '<span class="text-sm whitespace-nowrap" style="color:#8da8c8">→'+et+'</span>';
-      parts += '<span class="font-bold text-base truncate '+c.tx+'">'+(item.Activity||c.label)+'</span>';
-      if (item.Note) parts += '<span class="text-gray-500 text-sm truncate italic">'+item.Note+'</span>';
-      if (item.Expense) parts += '<span class="text-red-500 text-sm font-bold whitespace-nowrap">'+fmtExp(item.Expense, item.Currency)+'</span>';
-      parts += fmtParticipantBadge(item.Participants, true);
-      let editH = isEditMode ? '<button onclick="openEditModal(\''+esc(item.ID)+'\')" class="flex-shrink-0 bg-white/70 text-gray-500 border border-gray-300 w-6 h-6 rounded-md text-xs hover:bg-white hover:text-red-500 transition font-bold">✏️</button>' : '';
-      let emojiLink = item.MapURL
-        ? '<a href="'+escHtml(item.MapURL)+'" target="_blank" rel="noopener" class="text-2xl flex-shrink-0 hover:scale-110 transition-transform">'+c.icon+'</a>'
-        : '<div class="text-2xl flex-shrink-0">'+c.icon+'</div>';
-      div.innerHTML = '<div class="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap">'+parts+'</div>'+editH+emojiLink;
-      return div;
+      const c = gtc(item.Type), et = getItemEndTime(item), info = getTransportInfo(item);
+      const palette = {plane:['#f0f9ff','#7dd3fc','#0369a1'],subway:['#ecfdf5','#6ee7b7','#047857'],bus:['#fff7ed','#fdba74','#c2410c'],train:['#f5f3ff','#c4b5fd','#6d28d9'],taxi:['#fffbeb','#fcd34d','#b45309'],bicycle:['#f7fee7','#bef264','#4d7c0f'],walking:['#f5f5f4','#d6d3d1','#57534e']};
+      const colors = palette[item.Type] || ['#ecfeff','#67e8f9','#0e7490'];
+      const wrapper = document.createElement('div');
+      wrapper.className = 'transport-wrap' + (isEditMode ? ' editable' : '');
+      const detail = document.createElement('details');
+      detail.className = 'transport-card';
+      detail.dataset.id = item.ID;
+      detail.style.setProperty('--tr-bg', colors[0]);
+      detail.style.setProperty('--tr-border', colors[1]);
+      detail.style.setProperty('--tr-ink', colors[2]);
+      const duration = item.Type === 'plane' ? '起降採各機場當地時間' : (item.Duration ? '約 '+item.Duration+' 分鐘' : '依當天安排');
+      const link = (label,url) => '<a href="'+escHtml(url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(label)+' ↗</a>';
+      const mapURL = /^https?:\/\//i.test(item.MapURL || '') ? item.MapURL : '';
+      detail.innerHTML = '<summary><span class="transport-icon">'+c.icon+'</span><div class="transport-summary"><div class="transport-time"><strong>'+escHtml(item.Time || '時間未定')+(et?' <span>→</span> '+escHtml(et):'')+'</strong><small>'+escHtml(duration)+'</small>'+(item.Expense?'<span class="transport-expense">'+escHtml(fmtExp(item.Expense,item.Currency))+'</span>':'')+'</div><h3>'+escHtml(item.Activity || c.label)+'</h3>'+fmtParticipantBadge(item.Participants,true)+'</div><span class="expand-label"><span class="closed-label">詳情</span><span class="open-label">收合</span> <span class="chevron">⌄</span></span></summary><div class="transport-content"><dl><div><dt>搭乘方式</dt><dd>'+escHtml(info.service)+'</dd></div><div><dt>注意事項</dt><dd>'+escHtml(item.Note || '依當天狀況調整。')+'</dd></div></dl><div class="transport-links">'+info.links.map(([label,url])=>link(label,url)).join('')+(mapURL?link('Google Maps',mapURL):'')+'</div></div>';
+      wrapper.appendChild(detail);
+      if (isEditMode) {
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'transport-edit'; edit.textContent = '✏️';
+        edit.setAttribute('aria-label','編輯 '+(item.Activity || c.label));
+        edit.onclick = () => openEditModal(item.ID);
+        wrapper.appendChild(edit);
+      }
+      return wrapper;
     }
 
     function renderFlights(flights) {

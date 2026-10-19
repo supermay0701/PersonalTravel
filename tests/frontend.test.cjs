@@ -12,7 +12,8 @@ function frontend() {
   const context = vm.createContext({
     console, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
     window:{location:{search:'?trip=osaka-shiga-kumamoto202611'}},
-    document:{getElementById:element,documentElement:{style:{setProperty(){}}},querySelector:()=>null},
+    document:{getElementById:element,documentElement:{style:{setProperty(){}}},querySelector:()=>null,
+      createElement:tag=>({tagName:tag,children:[],dataset:{},style:{setProperty(){}},setAttribute(){},appendChild(child){this.children.push(child);}})},
     localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
     fetch:(url, options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve:body=>resolve({ok:true,json:async()=>body}),reject}))
   });
@@ -69,4 +70,30 @@ test('文件預覽無法透過一般編輯寫入雲端',async()=>{
   const f=frontend(); f.run('appData._preview=true');
   const result=await f.run("apiPost({action:'update',id:'i'})");
   assert.equal(result.status,'error');assert.equal(f.requests.length,0);
+});
+
+test('交通卡使用目前資料的時間與備註，並保留費用及參與者',()=>{
+  const f=frontend();
+  f.run("appData.participants=[{Name:'A'},{Name:'B'}]; globalThis.item={...getNovemberTripSeed().itinerary.find(i=>i.ID==='nov26-d4-02'),Time:'11:19',Duration:'34',Note:'改搭班次 <確認>',Expense:'500',Currency:'JPY',Participants:'A'};");
+  const html=f.run('createTransportCard(item).children[0].innerHTML');
+  assert.match(html,/11:19/); assert.match(html,/11:53/); assert.doesNotMatch(html,/11:34/);
+  assert.match(html,/改搭班次 &lt;確認&gt;/); assert.match(html,/¥500/); assert.match(html,/pt-badge/);
+  assert.match(html,/JR 西日本/); assert.match(html,/Google Maps/);
+});
+
+test('交通卡只有編輯模式提供編輯按鈕，點擊帶入原行程 ID',()=>{
+  const f=frontend();
+  f.run("globalThis.item=getNovemberTripSeed().itinerary.find(i=>i.ID==='nov26-d4-04');");
+  assert.equal(f.run('createTransportCard(item).children.length'),1);
+  f.run("isEditMode=true; openEditModal=id=>{globalThis.editedId=id;}; globalThis.card=createTransportCard(item); card.children[1].onclick();");
+  assert.equal(f.run('card.children.length'),2); assert.equal(f.run('editedId'),'nov26-d4-04');
+});
+
+test('其他旅程不套用熊本官方資訊，未定時間與跨時區航班保持原值',()=>{
+  const f=frontend();
+  assert.equal(f.run("getTransportInfo({TripID:'tokyo2026',Type:'subway',Activity:'市電'}).links.length"),0);
+  assert.equal(f.run("getTransportInfo({TripID:'osaka-shiga-kumamoto202611',Type:'taxi',Activity:'JR 新快速'}).links.length"),0);
+  assert.match(f.run("createTransportCard({ID:'unknown',Type:'taxi'}).children[0].innerHTML"),/時間未定/);
+  const flight=f.run("createTransportCard(getNovemberTripSeed().itinerary.find(i=>i.ID==='nov26-d10-05')).children[0].innerHTML");
+  assert.match(flight,/12:40/);assert.match(flight,/14:25/);assert.match(flight,/各機場當地時間/);
 });

@@ -1,7 +1,7 @@
 // 旅遊行程 PWA service worker
 // 策略：app shell（index.html / icon / manifest）與 CDN 資源快取，讓離線也能開頁；
 // GAS API 一律走網路（資料新鮮度由前端 localStorage + version 控制）。
-const CACHE = 'travel-shell-v3';
+const CACHE = 'travel-shell-v4';
 const CORE = ['./', './index.html', './manifest.json', './icon.svg', './data/november2026.js'];
 
 self.addEventListener('install', e => {
