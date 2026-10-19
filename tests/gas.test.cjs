@@ -63,11 +63,48 @@ test('行程涵蓋 10 天，兩場測試時間、航班關聯與未定欄位正�
   for(const r of seed.itinerary) { assert.equal(r.TripID,seed.tripId); assert.equal(r.ExpenseID,''); }
   assert.equal(seed.expenses.length,0);
   assert.equal(seed.participants.length,0);
-  assert.equal(seed.flights[0].DepartTime,'');
-  assert.equal(seed.flights[1].ArriveTime,'');
+  assert.equal(seed.flights[0].FlightNo,'IT212');
+  assert.equal(seed.flights[0].DepartTime,'14:40');
+  assert.equal(seed.flights[0].ArriveTime,'17:55');
+  assert.equal(seed.flights[1].DepartTime,'12:40');
+  assert.equal(seed.flights[1].ArriveTime,'14:25');
   assert.ok(seed.itinerary.some(r=>r.Date==='2026-11-03'&&r.Time==='09:00'&&r.Activity.includes('報到')));
   assert.ok(seed.itinerary.some(r=>r.Date==='2026-11-09'&&r.Time==='08:15'&&r.Activity.includes('抵達')));
-  for(const r of seed.itinerary.filter(r=>r.Type==='plane')) assert.ok(seed.flights.some(f=>f.ID===r.FlightID));
+  for(const r of seed.itinerary.filter(r=>r.Type==='plane')) {
+    const flight = seed.flights.find(f=>f.ID===r.FlightID);
+    assert.ok(flight);
+    assert.equal(r.Time,flight.DepartTime);
+    assert.equal(r.ActualEndTime,flight.ArriveTime);
+  }
+});
+
+test('既有資料更新只改註解與航班指定欄位，保留勾選、訂位與其他旅程',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  const itinerary=h.sheets.get('Itinerary').rows, flights=h.sheets.get('FlightInfo').rows, checklist=h.sheets.get('Checklist').rows;
+  itinerary[1][2]=''; itinerary[1][4]='18:00'; itinerary[1][7]='舊註解'; itinerary[1][13]='旅伴';
+  itinerary[3][2]='19:40'; // 使用者自行調整的非航班時間不覆寫
+  flights[1][1]=''; flights[1][6]=''; flights[1][9]='KEEP-BOOKING';
+  checklist[1][1]='舊文字'; checklist[1][2]='TRUE';
+  itinerary.push(['other-id','','','','','','其他行程','保留','','','','','other']);
+  const count=h.context.refreshNovemberTripDetails_(h.ss);
+  assert.equal(count.Itinerary,1); assert.equal(count.FlightInfo,1); assert.equal(count.Checklist,1);
+  assert.equal(itinerary[1][2],'14:40'); assert.equal(itinerary[1][4],'17:55');
+  assert.equal(itinerary[1][13],'旅伴'); assert.equal(itinerary[3][2],'19:40');
+  assert.equal(flights[1][9],'KEEP-BOOKING'); assert.equal(checklist[1][2],'TRUE');
+  assert.equal(itinerary.at(-1)[7],'保留');
+  const writes=h.metrics.writes;
+  h.context.refreshNovemberTripDetails_(h.ss);
+  assert.equal(h.metrics.writes,writes);
+});
+
+test('更新前若缺少航班或 ID 衝突，所有資料保持原樣',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  h.sheets.get('Itinerary').rows[1][7]='舊註解';
+  h.sheets.get('FlightInfo').rows[1][11]='other';
+  const writes=h.metrics.writes;
+  assert.throws(()=>h.context.refreshNovemberTripDetails_(h.ss),/唯一的旅程記錄/);
+  assert.equal(h.metrics.writes,writes);
+  assert.equal(h.sheets.get('Itinerary').rows[1][7],'舊註解');
 });
 
 test('匯入重跑不重複、不覆蓋人工修改、不改預設旅行',()=>{

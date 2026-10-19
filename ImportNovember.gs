@@ -49,3 +49,57 @@ function importNovemberTrip_(ss) {
   });
   return result;
 }
+
+// 2026/10/19：精簡既有註解並補齊確認航班；不重建資料或重設勾選／訂位代號。
+function refreshNovemberTripDetails() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const result = refreshNovemberTripDetails_(SpreadsheetApp.getActiveSpreadsheet());
+    console.log(JSON.stringify(result));
+    return result;
+  } finally {
+    try { SpreadsheetApp.flush(); bumpDataGen(getNovemberTripSeed().tripId); }
+    finally { lock.releaseLock(); }
+  }
+}
+
+function refreshNovemberTripDetails_(ss) {
+  const seed = getNovemberTripSeed();
+  const specs = [
+    {name:SHEETS.ITINERARY, columns:IT_COL, records:seed.itinerary, fields:r => {
+      const fields = {Note:r.Note};
+      if (r.Type === 'plane') Object.assign(fields, {Activity:r.Activity, Time:r.Time, ActualEndTime:r.ActualEndTime});
+      if (r.ID === 'nov26-d1-02') fields.Time = r.Time;
+      return fields;
+    }},
+    {name:SHEETS.FLIGHT, columns:FL_COL, records:seed.flights, fields:r => ({
+      FlightNo:r.FlightNo, Airline:r.Airline, DepartAirport:r.DepartAirport, ArriveAirport:r.ArriveAirport,
+      DepartDate:r.DepartDate, DepartTime:r.DepartTime, ArriveDate:r.ArriveDate, ArriveTime:r.ArriveTime, Note:r.Note
+    })},
+    {name:SHEETS.CHECKLIST, columns:CK_COL,
+      records:seed.checklist.filter(r => ['nov26-check-01','nov26-check-11','nov26-check-24'].includes(r.ID)),
+      fields:r => ({Item:r.Item})}
+  ];
+  // 所有 ID 與表頭驗證通過才開始寫入，避免套用到其他旅程或錯誤欄位。
+  const plans = specs.map(spec => {
+    const sheet = ss.getSheetByName(spec.name);
+    if (!sheet) throw new Error('缺少工作表：' + spec.name);
+    const data = sheet.getDataRange().getDisplayValues();
+    if (Object.keys(spec.columns).some((h,i) => !data[0] || data[0][i] !== h)) throw new Error(spec.name + ' 欄位順序不符');
+    const rows = spec.records.map(record => {
+      const matches = data.map((row,i) => ({row,i})).filter(v => v.i > 0 && v.row[0] === record.ID);
+      if (matches.length !== 1 || matches[0].row[spec.columns.TripID-1] !== seed.tripId) throw new Error('找不到唯一的旅程記錄：' + record.ID);
+      const current = matches[0], fields = spec.fields(record);
+      Object.keys(fields).forEach(key => { if (current.row[spec.columns[key]-1] === fields[key]) delete fields[key]; });
+      return {row:current.i+1, fields};
+    }).filter(r => Object.keys(r.fields).length);
+    return {sheet, rows, spec};
+  });
+  const result = {};
+  plans.forEach(plan => {
+    plan.rows.forEach(r => setFields_(plan.sheet, r.row, plan.spec.columns, r.fields));
+    result[plan.spec.name] = plan.rows.length;
+  });
+  return result;
+}

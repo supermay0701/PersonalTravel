@@ -137,7 +137,7 @@
     <div id="november-info" class="hidden text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4">
       <p>⚾ 11/03 皇子山 09:00 報到 · 11/09 藤崎台 08:30 報到（08:10～08:20 到場）</p>
       <details class="mt-2"><summary class="cursor-pointer">行程說明與交通查核</summary>
-        <p class="mt-2">兩人 · 時間以日本時間為準。依 2026/10/18 提供文件整理；交通與休息時間為規劃估算，空白代表未定。除 11/01 住宿外，其餘訂單、班次與訂位仍須核對。參與者姓名尚未提供，預估花費未列入帳務。</p>
+        <p class="mt-2">行程採日本時間，航班採各機場當地時間。航班已依提供資訊確認；其餘交通時間為估算，訂位狀態見各項安排。</p>
         <p class="mt-2">球棒袋屬運動用品，JR 有免強制預約例外；使用最後排後方特大行李空間仍需預約對應座位。市電與產交巴士付款方式不同。</p>
         <div class="flex flex-wrap gap-3 mt-2 underline">
           <a href="https://railway.jr-central.co.jp/oversized-baggage/" target="_blank" rel="noopener">JR 行李規則</a>
@@ -533,7 +533,7 @@
     TRIPS['osaka-shiga-kumamoto202611'] = {
       name:'🍁 大阪・滋賀・熊本 2026/11', title:'⚾ 大阪・滋賀・熊本 10 日棒球測試之旅',
       led:'⚾ OSAKA · SHIGA · KUMAMOTO ⚾', h1:'大阪・滋賀・熊本 10 日棒球之旅',
-      sub:'2026.11.01 — 11.10 · 兩人 · 日本時間 JST', divider:'🍁 行程表 SCHEDULE ⚾',
+      sub:'2026.11.01 — 11.10 · 兩人 · 行程日本時間／航班當地時間', divider:'🍁 行程表 SCHEDULE ⚾',
       dayDivider:['🍁','⚾'], emptyEmoji:'🍁', icons:['⚾','🍁','🏯','🚄','🍜','♨️','🧢','🛍️'],
       theme:{ ...TRIPS.tokyo2026.theme, themeColor:'#352018',
         bgGrad:'linear-gradient(180deg, #291c20 0%, #503023 48%, #24382d 100%)',
@@ -1009,7 +1009,7 @@
 
     function createTransportCard(item) {
       const c = gtc(item.Type);
-      const et = calcEnd(item.Time, item.Duration);
+      const et = getItemEndTime(item);
       const div = document.createElement('div');
       div.className = 'rounded-xl border-2 border-dashed '+c.bd+' '+c.bg+' mx-1 -my-1 px-4 py-2 flex items-center gap-3 transition hover:shadow-md relative z-[1]';
       // single row with color hierarchy: time(bold dark) · duration(medium) · arrival(medium) · name(bold dark) · note(light) · expense(red)
