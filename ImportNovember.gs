@@ -81,6 +81,43 @@ function refreshNovemberTripDetails_(ss) {
       records:seed.checklist.filter(r => ['nov26-check-01','nov26-check-11','nov26-check-24'].includes(r.ID)),
       fields:r => ({Item:r.Item})}
   ];
+  return applyNovemberUpdates_(ss, specs, seed.tripId);
+}
+
+// 交通修訂：只更新本次指定的行程及清單，保留其他人工編輯與已確認航班。
+function refreshNovemberTransportPlan() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const result = refreshNovemberTransportPlan_(SpreadsheetApp.getActiveSpreadsheet());
+    console.log(JSON.stringify(result));
+    return result;
+  } finally {
+    try { SpreadsheetApp.flush(); bumpDataGen(getNovemberTripSeed().tripId); }
+    finally { lock.releaseLock(); }
+  }
+}
+
+function refreshNovemberTransportPlan_(ss) {
+  const seed = getNovemberTripSeed();
+  const ids = [
+    'nov26-d1-03','nov26-d1-04','nov26-d1-05','nov26-d1-06','nov26-d1-07','nov26-d1-08',
+    'nov26-d2-01','nov26-d2-02','nov26-d2-03',
+    'nov26-d4-02','nov26-d4-03','nov26-d4-04','nov26-d4-05',
+    'nov26-d10-01','nov26-d10-02','nov26-d10-03','nov26-d10-04'
+  ];
+  const specs = [
+    {name:SHEETS.ITINERARY, columns:IT_COL, records:seed.itinerary.filter(r => ids.includes(r.ID)),
+      fields:r => ({Time:r.Time, Duration:r.Duration, ActualEndTime:r.ActualEndTime,
+        Type:r.Type, Activity:r.Activity, Note:r.Note, MapURL:r.MapURL})},
+    {name:SHEETS.CHECKLIST, columns:CK_COL,
+      records:seed.checklist.filter(r => ['nov26-check-01','nov26-check-12','nov26-check-24'].includes(r.ID)),
+      fields:r => ({Item:r.Item})}
+  ];
+  return applyNovemberUpdates_(ss, specs, seed.tripId);
+}
+
+function applyNovemberUpdates_(ss, specs, tripId) {
   // 所有 ID 與表頭驗證通過才開始寫入，避免套用到其他旅程或錯誤欄位。
   const plans = specs.map(spec => {
     const sheet = ss.getSheetByName(spec.name);
@@ -89,7 +126,7 @@ function refreshNovemberTripDetails_(ss) {
     if (Object.keys(spec.columns).some((h,i) => !data[0] || data[0][i] !== h)) throw new Error(spec.name + ' 欄位順序不符');
     const rows = spec.records.map(record => {
       const matches = data.map((row,i) => ({row,i})).filter(v => v.i > 0 && v.row[0] === record.ID);
-      if (matches.length !== 1 || matches[0].row[spec.columns.TripID-1] !== seed.tripId) throw new Error('找不到唯一的旅程記錄：' + record.ID);
+      if (matches.length !== 1 || matches[0].row[spec.columns.TripID-1] !== tripId) throw new Error('找不到唯一的旅程記錄：' + record.ID);
       const current = matches[0], fields = spec.fields(record);
       Object.keys(fields).forEach(key => { if (current.row[spec.columns[key]-1] === fields[key]) delete fields[key]; });
       return {row:current.i+1, fields};

@@ -12,6 +12,10 @@
 
 2026/10/19 補充：已更新試算表並部署 GAS 第 18 版，精簡行程註解，依使用者提供資訊確認 IT212（11/01 桃園 T1 14:40 → 關西 T1 17:55）與 IT795（11/10 熊本 12:40 → 台南 14:25）。航班採各機場當地時間，其他行程採日本時間。原始文件只有去程約 18:00 抵達及回程 IT795 12:40 起飛。
 
+後續交通修訂：依使用者最新選擇，11/1 改成先吃吉次再入住，暫排 20:40 晚餐、22:00 入住。HARUKA 暫抓 50 分鐘；11/2 標示 JR 新快速直達；11/4 採使用者提供的 11:34→12:08 規劃班次，留 75 分鐘轉乘；11/10 依官方 11/1 改正平日班表搭 08:25→09:11，備案 08:37→09:18。僅保留主要方案與必要提醒。
+
+此批交通修訂先提交至 GitHub 供確認，試算表更新與 GAS 新部署尚未執行。正式網站的行程仍以試算表資料為準；需將匯入器與資料檔同步至 GAS，執行 `refreshNovemberTransportPlan()`，再更新既有部署，才能讓雲端行程套用本次交通調整。
+
 ## 預覽 11 月行程
 
 開啟 `index.html?trip=osaka-shiga-kumamoto202611`，或從頁面左上選取「大阪・滋賀・熊本 2026/11」。尚未匯入雲端時會顯示「文件行程預覽」，解鎖後可匯入；預覽內容不接受一般編輯，避免誤以為已儲存。
@@ -36,10 +40,11 @@ python -m http.server 8765 --bind 127.0.0.1
 
 2026/10/18 查核與補充：
 
-- 11/01 依使用者更新，先到 S.TRAINING 入住放行李，再步行至大阪站 INOGATE 4F 的吉次（21:45 暫估）。[館方](https://barchica03.com/shoplist/sendaimeibutsu-gyutansumibiyaki-yoshiji/)公布營業至23:00，[店家經營的訂位頁](https://tabelog.com/osaka/A2701/A270101/27143819/)標示最後點餐22:00；出關延誤時重新評估，不視為已訂位。
+- 11/01 依最新指示先吃吉次、再入住 S.TRAINING（20:40 晚餐、22:00 入住暫估）。[館方](https://barchica03.com/shoplist/sendaimeibutsu-gyutansumibiyaki-yoshiji/)公布營業至23:00，[店家經營的訂位頁](https://tabelog.com/osaka/A2701/A270101/27143819/)標示最後點餐22:00；[飯店](https://www.shinumedacenter.com/page4)入住櫃檯為研修中心 1F，16:00～23:00，晚到須先聯絡。餐廳尚未訂位。
 
 - [JR 行李規則](https://railway.jr-central.co.jp/oversized-baggage/)：運動用品不因尺寸直接套用強制預約要求，但使用最後排後方的特大行李空間須預約對應座位。球棒袋仍建議事先向 JR 確認放置方式；航空託運另查航空公司。
-- [九州產交機場巴士](https://www.sankobus.jp/bus/ap-limousine/jikoku/)：查得頁面顯示 2026/04/01 改正時刻，不能據此認定 11/10 不再變動；出發前一週與前一晚重新確認。
+- [九州產交機場巴士](https://www.sankobus.jp/bus/ap-limousine/jikoku/)已公布 [2026/11/01 改正班表](https://www.sankobus.jp/busportal/wp-content/uploads/tt-limousine-fromcity-20261101.pdf)。11/10 週二採第 1 頁平日班次：通町筋 08:25→機場 09:11，備案 08:37→09:18；使用者整理的 08:24→09:07 未套用。出發前仍需確認異動。
+- [HARUKA 票券](https://www.westjr.co.jp/travel-information/en/tickets-passes/oneway/haruka/)：購買優惠票時確認大阪區間與 QR／兌換方式，出關後再選班次；不把特定平台折扣價寫成固定票價。11/4 大津→新大阪的 11:34→12:08 依使用者資料保留為規劃班次，尚非已購票或已確認當日運行。
 - [大津 Super Hotel](https://www.superhotel.co.jp/s_hotels/otsu/) 與 [SOVA 並木坂](https://hotelsova.co.jp/namikizaka/) 可核對入住資訊；個人訂單條款優先。
 
 ## 將資料寫入現有試算表
@@ -55,6 +60,8 @@ python -m http.server 8765 --bind 127.0.0.1
 匯入前會驗證三張表的表頭順序；任一不符則停止。缺少表時會建立，新增範圍使用純文字格式避免日期及時間被自動轉型。原本的 defaultTrip 不會變更；若要讓 11 月成為網站預設，手動將 Config 的 `defaultTrip` 設為上述旅程 ID。
 
 已匯入的 10/19 更新改執行 `refreshNovemberTripDetails()`：只修改 11 月既有行程註解、兩筆航班及關聯行程的時間與名稱、第一天入境時間和三項確認清單文字。保留勾選、訂位代號、費用、其他行程時間與其他旅程；不新增或刪除資料列。所有指定 ID 與表頭先驗證，重跑不重複寫入相同值。相關保留欄位與錯誤停止行為已納入測試，共 22 項通過。
+
+後續交通調整使用 `refreshNovemberTransportPlan()`，只更新指定的 17 筆交通／銜接安排與 3 項清單文字，不觸碰航班、其他行程註解、費用、參與者與勾選。既有 ID 保持不變，第一天依時間排序呈現晚餐在入住之前。相關銜接與保留欄位測試加入後，共 24 項通過。
 
 ## GAS 版控與線上同步
 

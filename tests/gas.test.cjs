@@ -107,6 +107,40 @@ test('更新前若缺少航班或 ID 衝突，所有資料保持原樣',()=>{
   assert.equal(h.sheets.get('Itinerary').rows[1][7],'舊註解');
 });
 
+test('交通修訂採先晚餐再入住，轉乘與機場巴士時間銜接正確',()=>{
+  const {seed}=harness(), row=id=>seed.itinerary.find(r=>r.ID===id);
+  assert.equal(row('nov26-d1-06').Time,'20:20');
+  assert.equal(row('nov26-d1-07').Time,'20:40');
+  assert.equal(row('nov26-d1-04').Time,'21:40');
+  assert.equal(row('nov26-d1-05').Time,'22:00');
+  assert.equal(row('nov26-d1-08').Type,'activity');
+  assert.equal(row('nov26-d4-02').Time,'11:34');
+  assert.equal(row('nov26-d4-02').Duration,'34');
+  assert.equal(row('nov26-d4-03').Time,'12:08');
+  assert.equal(row('nov26-d4-03').Duration,'75');
+  assert.equal(row('nov26-d10-02').Duration,'10');
+  assert.equal(row('nov26-d10-03').Time,'08:25');
+  assert.equal(row('nov26-d10-03').Duration,'46');
+  assert.equal(row('nov26-d10-04').Time,'09:15');
+});
+
+test('交通修訂限定指定 ID，保留航班、其他註解、費用與勾選',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  const rows=h.sheets.get('Itinerary').rows;
+  const dinner=rows.find(r=>r[0]==='nov26-d1-07');
+  dinner[2]='21:45'; dinner[7]='先入住再吃飯'; dinner[8]='1000'; dinner[13]='旅伴';
+  const unrelated=rows.find(r=>r[0]==='nov26-d3-01'); unrelated[7]='自訂早餐提醒';
+  h.sheets.get('FlightInfo').rows[1][9]='KEEP-BOOKING';
+  h.sheets.get('Checklist').rows[24][1]='舊順序'; h.sheets.get('Checklist').rows[24][2]='TRUE';
+  const flights=JSON.stringify(h.sheets.get('FlightInfo').rows);
+  const count=h.context.refreshNovemberTransportPlan_(h.ss);
+  assert.equal(count.Itinerary,1); assert.equal(count.Checklist,1);
+  assert.equal(dinner[2],'20:40'); assert.equal(dinner[8],'1000'); assert.equal(dinner[13],'旅伴');
+  assert.equal(unrelated[7],'自訂早餐提醒'); assert.equal(h.sheets.get('Checklist').rows[24][2],'TRUE');
+  assert.equal(JSON.stringify(h.sheets.get('FlightInfo').rows),flights);
+  const writes=h.metrics.writes; h.context.refreshNovemberTransportPlan_(h.ss); assert.equal(h.metrics.writes,writes);
+});
+
 test('匯入重跑不重複、不覆蓋人工修改、不改預設旅行',()=>{
   const h=harness();
   const first=h.context.importNovemberTrip_(h.ss);
