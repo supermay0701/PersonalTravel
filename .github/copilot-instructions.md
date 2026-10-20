@@ -46,13 +46,13 @@ const IT_COL = { ID:1, Day:2, Time:3, Duration:4, ActualEndTime:5, Type:6, Activ
 
 **航班同步機制：**
 - 新增/編輯行程時若 Type=`plane`，會自動在 FlightInfo 表建立/更新對應航班記錄
-- Itinerary.Time ↔ FlightInfo.DepartTime、Itinerary.ActualEndTime ↔ FlightInfo.ArriveTime
+- FlightInfo 為唯一來源；Itinerary.Time ↔ FlightInfo.DepartTime、Itinerary.ActualEndTime ↔ FlightInfo.ArriveTime、Itinerary.Date ↔ FlightInfo.DepartDate 雙向同步；已關聯航班不允許單獨刪除
 - 刪除行程時若有 FlightID，會一併刪除關聯的 FlightInfo 記錄
 
 **費用同步機制：**
-- 新增/編輯行程時勾選「記錄到費用表」，會自動在 Expense 表建立/更新對應記錄
-- Itinerary.Expense/Currency 為卡片顯示用（不一定進帳），只有勾選才會建立 Expense 記錄
-- 取消勾選時會刪除關聯的 Expense 記錄並清空 ExpenseID
+- 初次勾選「記錄到費用表」會在 Expense 表建立記錄；既有關聯費用只由帳務表單更新，儲存行程不覆寫
+- 未記帳時 Itinerary.Expense/Currency 為預估顯示值；已關聯時卡片、編輯與複製都以 Expense.Amount/Currency 為準
+- 取消勾選時會刪除關聯的 Expense 記錄，並清空 ExpenseID 與舊顯示金額
 - 刪除行程時若有 ExpenseID，會一併刪除關聯的 Expense 記錄
 
 ### 5. Participants（參與者）
@@ -149,7 +149,7 @@ PersonalTravel/
 ## API 端點（GAS Web App）
 
 ### GET（doGet）
-- 取得所有行程、航班、清單資料
+- 取得公開行程、航班、清單；排除帳務、參與者、已記帳金額、航班訂位代號與航班備註
 - 可透過 `?trip=tokyo2026` 篩選特定旅程
 
 ### POST（doPost）
@@ -157,7 +157,8 @@ PersonalTravel/
 
 | action | 說明 | 必要參數 |
 |--------|------|----------|
-| `verify` | 驗證密碼 | `apiKey`, `tripId` |
+| `readPrivate` | 驗證後讀取完整私人資料 | `apiKey`, `tripId` |
+| `verify` | 驗證密碼並回傳完整私人資料 | `apiKey`, `tripId` |
 | `update` | 更新行程項目 | `apiKey`, `id`, 以及要更新的欄位 |
 | `create` | 新增行程項目 | `apiKey`, `tripId`, `day`, `type`, `activity` 等 |
 | `delete` | 刪除行程項目 | `apiKey`, `id` |

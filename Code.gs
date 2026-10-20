@@ -13,7 +13,7 @@ function getDataGen(tripId) {
   let g = p.getProperty('dataGen');
   if (!g) { g = '1'; p.setProperty('dataGen', g); }
   // 時間桶也會換版，未安裝 onEdit 觸發器時仍會在 5 分鐘內讀到人工改表。
-  return g + '.' + (p.getProperty('tripGen_' + (tripId || '')) || '0') + '.' + Math.floor(Date.now() / 300000);
+  return 'secure-v2.' + g + '.' + (p.getProperty('tripGen_' + (tripId || '')) || '0') + '.' + Math.floor(Date.now() / 300000);
 }
 function bumpDataGen(tripId) {
   const p = PropertiesService.getScriptProperties();
@@ -63,7 +63,7 @@ function getChangedTables_(req) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const names = /^(create|update|delete)$/.test(req.action) || req.action === 'importNovemberTrip'
     ? { itinerary:SHEETS.ITINERARY, flights:SHEETS.FLIGHT, expenses:SHEETS.EXPENSE }
-    : /Flight$/.test(req.action) ? { flights:SHEETS.FLIGHT }
+    : /Flight$/.test(req.action) ? { flights:SHEETS.FLIGHT, itinerary:SHEETS.ITINERARY }
     : /Expense$/.test(req.action) ? { expenses:SHEETS.EXPENSE } : { checklist:SHEETS.CHECKLIST };
   if (req.action === 'importNovemberTrip') names.checklist = SHEETS.CHECKLIST;
   const changes = {};
@@ -107,29 +107,58 @@ function doGet(e) {
     return ContentService.createTextOutput(cached).setMimeType(ContentService.MimeType.JSON);
   }
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let itinerary = getSheetData(ss, SHEETS.ITINERARY);
-  let flights = getSheetData(ss, SHEETS.FLIGHT);
-  let checklist = getSheetData(ss, SHEETS.CHECKLIST);
-  let participants = getSheetData(ss, SHEETS.PARTICIPANTS);
-  let expenses = getSheetData(ss, SHEETS.EXPENSE);
-  if (tripId) {
-    itinerary = itinerary.filter(r => r.TripID === tripId);
-    flights = flights.filter(r => r.TripID === tripId);
-    checklist = checklist.filter(r => r.TripID === tripId);
-    participants = participants.filter(r => r.TripID === tripId);
-    expenses = expenses.filter(r => r.TripID === tripId);
-  }
-  const payload = {
-    status: "success", version: gen,
-    itinerary: itinerary, flights: flights, checklist: checklist, participants: participants, expenses: expenses
-  };
+  const payload = Object.assign({status:'success', version:gen}, publicData_(getTripData_(tripId)));
   if (resolvedTrip) payload.resolvedTrip = resolvedTrip;
   const json = JSON.stringify(payload);
   // 快取最長 5 分鐘；人工修改未設定觸發器時也會定期更新。
   // 若 JSON 超過 CacheService 100KB 上限會丟例外，略過即可（仍正常回傳）。
   try { cache.put(cacheKey, json, 300); } catch (err) {}
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 私人資料只透過驗證後的 POST 回傳；公開快取不含帳務或訂位資料。
+function getTripData_(tripId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), result = {};
+  const tables = {itinerary:SHEETS.ITINERARY, flights:SHEETS.FLIGHT, checklist:SHEETS.CHECKLIST, participants:SHEETS.PARTICIPANTS, expenses:SHEETS.EXPENSE};
+  Object.keys(tables).forEach(k => { result[k] = tripId ? getSheetData(ss, tables[k]).filter(r => r.TripID === tripId) : []; });
+  result.itinerary = result.itinerary.map(item => {
+    const flight = item.Type === 'plane' && result.flights.find(f => f.ID === item.FlightID);
+    return flight ? Object.assign({}, item, {Time:flight.DepartTime, ActualEndTime:flight.ArriveTime, Date:flight.DepartDate}) : item;
+  });
+  return result;
+}
+function publicData_(data) {
+  return Object.assign({}, data, {
+    expenses:[], participants:[],
+    itinerary:data.itinerary.map(r => Object.assign({}, r, {Expense:r.ExpenseID ? '' : r.Expense, Participants:''})),
+    flights:data.flights.map(r => Object.assign({}, r, {BookingRef:'', Note:''}))
+  });
+}
+function validateRequest_(req) {
+  const textFields = ['id','afterId','tripId','activity','note','item','description','flightNo','airline','departAirport','arriveAirport','bookingRef','participants','payer','category','expenseCategory','payMethod','day','query','mapUrl','imageUrl','url','time','departTime','arriveTime','actualEndTime','date','departDate','arriveDate','currency','type'];
+  textFields.forEach(k => {
+    if (req[k] === undefined) return;
+    if (typeof req[k] !== 'string' || req[k].length > 10000 || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(req[k])) throw new Error('欄位格式錯誤：' + k);
+    if (/^\s*=/.test(req[k])) throw new Error('文字欄位不可使用試算表公式：' + k);
+  });
+  ['time','departTime','arriveTime','actualEndTime'].forEach(k => {
+    if (req[k] && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(req[k])) throw new Error('時間格式須為 HH:MM：' + k);
+  });
+  ['date','departDate','arriveDate'].forEach(k => {
+    if (!req[k]) return;
+    const d = new Date(req[k] + 'T00:00:00Z');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(req[k]) || isNaN(d.getTime()) || d.toISOString().slice(0,10) !== req[k]) throw new Error('日期格式錯誤：' + k);
+  });
+  ['expense','amount','duration'].forEach(k => {
+    if (req[k] === undefined || req[k] === '') return;
+    if (!['string','number'].includes(typeof req[k]) || !/^\d+(?:\.\d+)?$/.test(String(req[k])) || !Number.isFinite(Number(req[k]))) throw new Error('金額或時長須為非負數字：' + k);
+  });
+  ['mapUrl','imageUrl','url'].forEach(k => {
+    if (req[k] && !/^https?:\/\/[^\s<>"']+$/i.test(req[k])) throw new Error('網址只接受 http 或 https：' + k);
+  });
+  if (req.type && !['activity','plane','subway','bus','train','taxi','bicycle','walking','transport'].includes(req.type)) throw new Error('交通類型錯誤');
+  if (req.currency && !['JPY','TWD'].includes(req.currency)) throw new Error('幣別錯誤');
+  ['checked','recordExpense'].forEach(k => { if (req[k] !== undefined && typeof req[k] !== 'boolean') throw new Error('勾選值格式錯誤'); });
 }
 
 function getSheetData(ss, name) {
@@ -157,10 +186,14 @@ function doPost(e) {
     }
     const user = authenticateUser(req.apiKey, req.tripId);
     if (!user) return output.setContent(JSON.stringify({ status: "error", message: "金鑰錯誤或無權限" }));
+    validateRequest_(req);
     writing = MUTATIONS.indexOf(req.action) !== -1;
     let result;
     switch (req.action) {
-      case 'verify':        result = output.setContent(JSON.stringify({ status: "success", message: "驗證成功，歡迎 " + user })); break;
+      case 'verify':
+      case 'readPrivate':
+        if (!req.tripId) throw new Error('請指定旅程');
+        result = output.setContent(JSON.stringify({status:'success', message:'驗證成功，歡迎 ' + user, tripId:req.tripId, data:getTripData_(req.tripId), version:getDataGen(req.tripId)})); break;
       case 'update':        result = handleUpdate(req, user, output); break;
       case 'create':        result = handleCreate(req, user, output); break;
       case 'delete':        result = handleDeleteItinerary(req, user, output); break;
@@ -209,6 +242,13 @@ function handleUpdate(req, user, output) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
+      const linkedFlightId = String(data[i][IT_COL.FlightID-1] || '');
+      if (linkedFlightId) {
+        const linkedFlight = getSheetData(ss, SHEETS.FLIGHT).find(f => f.ID === linkedFlightId);
+        if (!linkedFlight || linkedFlight.TripID !== req.tripId) throw new Error('關聯航班遺失或旅程不符，請先修復關聯');
+        if (getSheetData(ss, SHEETS.ITINERARY).some(r => r.FlightID === linkedFlightId && r.TripID !== req.tripId)) throw new Error('航班關聯跨旅程，請先修復資料');
+      }
+      const linkedExpense = !!data[i][IT_COL.ExpenseID-1];
       setFields_(sheet, i+1, IT_COL, {
         Type: req.type,
         Activity: req.activity,
@@ -216,8 +256,8 @@ function handleUpdate(req, user, output) {
         Duration: req.duration,
         ActualEndTime: req.actualEndTime,
         Note: req.note,
-        Expense: req.expense,
-        Currency: req.currency,
+        Expense: linkedExpense ? (req.recordExpense === false ? '' : undefined) : req.expense,
+        Currency: linkedExpense ? undefined : req.currency,
         Participants: req.participants,
         MapURL: req.mapUrl,
         ImageURL: req.imageUrl,
@@ -228,25 +268,8 @@ function handleUpdate(req, user, output) {
       if (req.recordExpense) {
         var exSheet = ss.getSheetByName(SHEETS.EXPENSE);
         if (exSheet) {
-          if (existingExpenseId) {
-            var exData = exSheet.getDataRange().getValues();
-            for (var ei = 1; ei < exData.length; ei++) {
-              if (exData[ei][0].toString() === existingExpenseId) {
-                setFields_(exSheet, ei+1, EX_COL, {
-                  Day: req.day !== undefined ? req.day : data[i][IT_COL.Day-1],
-                  Time: req.time !== undefined ? req.time : data[i][IT_COL.Time-1],
-                  Category: req.expenseCategory,
-                  Description: req.activity !== undefined ? req.activity : data[i][IT_COL.Activity-1],
-                  Amount: req.expense,
-                  Currency: req.currency,
-                  Payer: req.payer,
-                  PayMethod: req.payMethod,
-                  Participants: req.participants
-                });
-                break;
-              }
-            }
-          } else {
+          // 已記帳資料只由費用表單更新，行程儲存不得覆寫。
+          if (!existingExpenseId) {
             var newExpId = Utilities.getUuid().substring(0, 8);
             var tripId = data[i][IT_COL.TripID-1] ? data[i][IT_COL.TripID-1].toString() : '';
             exSheet.appendRow([newExpId, req.day||data[i][IT_COL.Day-1]||'', req.time||data[i][IT_COL.Time-1]||'', req.expenseCategory||'其他', req.activity||data[i][IT_COL.Activity-1]||'', req.expense||data[i][IT_COL.Expense-1]||'', req.currency||data[i][IT_COL.Currency-1]||'JPY', req.payer||'', req.payMethod||'', req.participants||data[i][IT_COL.Participants-1]||'', tripId, req.id]);
@@ -264,6 +287,15 @@ function handleUpdate(req, user, output) {
         }
         sheet.getRange(i+1, IT_COL.ExpenseID).setValue('');
       }
+      if (linkedFlightId && req.type !== undefined && req.type !== 'plane') {
+        const flights = ss.getSheetByName(SHEETS.FLIGHT), rows = flights.getDataRange().getValues();
+        const otherLinks = getSheetData(ss, SHEETS.ITINERARY).filter(r => r.FlightID === linkedFlightId && r.ID !== req.id);
+        if (!otherLinks.length) {
+          const index = rows.findIndex((r,n) => n > 0 && String(r[0]) === linkedFlightId);
+          if (index > 0) flights.deleteRow(index + 1);
+        }
+        sheet.getRange(i+1, IT_COL.FlightID).setValue('');
+      }
       // Sync FlightInfo when type=plane
       if (req.type === 'plane') {
         if (req.arriveTime) sheet.getRange(i+1, IT_COL.ActualEndTime).setValue(req.arriveTime);
@@ -274,18 +306,7 @@ function handleUpdate(req, user, output) {
             var flData = flSheet.getDataRange().getValues();
             for (var j = 1; j < flData.length; j++) {
               if (flData[j][0].toString() === flightId) {
-                setFields_(flSheet, j+1, FL_COL, {
-                  FlightNo: req.flightNo,
-                  Airline: req.airline,
-                  DepartAirport: req.departAirport,
-                  ArriveAirport: req.arriveAirport,
-                  DepartDate: req.departDate,
-                  DepartTime: req.time,
-                  ArriveDate: req.arriveDate,
-                  ArriveTime: req.arriveTime,
-                  BookingRef: req.bookingRef,
-                  Note: req.note
-                });
+                handleUpdateFlight(Object.assign({}, req, {id:flightId, departTime:req.time, note:undefined}), user, output);
                 break;
               }
             }
@@ -378,6 +399,9 @@ function handleDeleteItinerary(req, user, output) {
 }
 
 function handleDeleteRow(req, user, output, sheetName) {
+  if (sheetName === SHEETS.FLIGHT && getSheetData(SpreadsheetApp.getActiveSpreadsheet(), SHEETS.ITINERARY).some(r => r.FlightID === req.id)) {
+    throw new Error('此航班已關聯行程，請從行程頁修改或刪除該行程');
+  }
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet) return output.setContent(JSON.stringify({ status: "error", message: "工作表不存在" }));
   const data = sheet.getDataRange().getValues();
@@ -406,6 +430,10 @@ function handleUpdateFlight(req, user, output) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0].toString() === req.id.toString()) {
+      const itSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.ITINERARY);
+      const itRows = itSheet ? itSheet.getDataRange().getValues() : [];
+      const linked = itRows.map((r,n)=>({r,n})).filter(x => x.n > 0 && String(x.r[IT_COL.FlightID-1] || '') === req.id);
+      if (linked.some(x => String(x.r[IT_COL.TripID-1] || '') !== req.tripId)) throw new Error('航班關聯跨旅程，請先修復資料');
       setFields_(sheet, i+1, FL_COL, {
         FlightNo: req.flightNo,
         Airline: req.airline,
@@ -418,6 +446,7 @@ function handleUpdateFlight(req, user, output) {
         BookingRef: req.bookingRef,
         Note: req.note
       });
+      linked.forEach(x => setFields_(itSheet, x.n+1, IT_COL, {Time:req.departTime, ActualEndTime:req.arriveTime, Date:req.departDate}));
       return output.setContent(JSON.stringify({ status: "success", message: "航班更新成功" }));
     }
   }

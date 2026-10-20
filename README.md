@@ -92,7 +92,7 @@ Copy-Item .gas-backup/appsscript.json appsscript.json
 將 `.clasp.json` 的 `scriptId` 改為真正 ID。比較備份與本機版本，若線上有額外 `.gs`、HTML 或服務相依，先整合並加入 `.claspignore` 白名單；clasp push 同步整個專案，不能假設未列入的遠端檔案會保留。保留從線上取得的 manifest，避免覆蓋既有 Web App 設定、時區與 OAuth scopes。
 
 ```powershell
-node --test tests/gas.test.cjs tests/frontend.test.cjs
+node --test tests/gas.test.cjs tests/frontend.test.cjs tests/sw.test.cjs
 clasp show-file-status
 clasp push
 clasp list-deployments
@@ -116,3 +116,22 @@ clasp create-deployment --deploymentId <現有部署ID> --versionNumber <上一�
 - 前端 PWA 快取也包含初始行程資料，可離線閱讀；資料狀態明確區分文件預覽與雲端同步。
 
 測試使用 Node.js 內建 runner 與模擬的 GAS 服務，不需 npm 套件，不接觸正式試算表。涵蓋匯入重跑、表頭錯誤、跨旅程權限、批次寫入、航班／費用同步、鎖、快取與過時請求。真實 GAS 延遲與線上整合需完成 Google 授權及部署後量測，不能由本機測試推定。
+
+
+## 2026/10/20：帳務來源與離線快取修正
+
+- 已記帳的行程卡、編輯及複製金額都讀取 Expense；Itinerary 原金額只用於未記帳的預估費用，既有欄位不搬動。
+- 已關聯費用統一由帳務表單修改，行程編輯視窗提供入口。儲存行程不再覆寫既有費用的金額、幣別、描述、付款人或分攤者。初次記帳、取消記帳及刪除行程時的關聯清理保留；取消記帳會清除舊顯示金額。
+- Service Worker 升至 v5：只有成功、未重新導向的主頁 HTML 才更新離線首頁。其他路徑不使用首頁導覽快取，啟用時只清除 travel-shell 舊版本。
+- 原始批次 34 項測試通過，涵蓋舊行程不覆寫新帳務、關聯費用顯示及離線快取；後續私人資料與航班修正一併發布，見下節。
+
+
+## 2026/10/20：私人資料、輸入驗證與航班同步
+
+- 公開 GET 與公開快取不再包含帳務、參與者、已記帳金額、航班訂位代號及航班備註。行程內容仍公開，請勿將訂位代號或其他私人資料填在公開行程備註。
+- `verify`、`readPrivate` 透過 POST 的金鑰與 TripID 驗證後才回傳完整資料；金鑰不放在網址。私人資料只留在當次頁面記憶體；離線只提供公開內容。首次開啟新版會移除舊資料快取，登出也會清除頁面中的私人資料。
+- 前端對活動、航班、清單及事件參數做適當跳脫，地圖與圖片只接受 HTTP(S)。GAS 寫入前驗證時間、日期、金額、時長、類型、幣別與網址，並拒絕公式文字。
+- FlightInfo 為航班時間與日期來源。從航班或行程編輯會同步起降時間與出發日期；已關聯航班不可單獨刪除，航班表單提供前往行程入口。將行程改為非航班會解除關聯，無其他行程使用時清理航班。
+- Service Worker 快取版本升至 v6。先部署新版 GAS，再發布前端；不改既有 API URL、試算表欄位或 Web App 存取設定。
+
+本機目前 42 項測試通過；已另以瀏覽器確認行程與公開航班畫面。自動測試不會寫入正式試算表。

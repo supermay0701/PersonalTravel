@@ -229,14 +229,16 @@ test('寫入鎖忙碌時不更動資料；例外路徑釋放鎖並使快取失�
   assert.ok(h.properties.get('tripGen_'+h.seed.tripId));
 });
 
-test('行程編輯仍同步航班與帳務；刪除仍清理關聯',()=>{
+test('行程編輯同步航班並保留帳務；刪除仍清理關聯',()=>{
   const h=harness();
   const created=h.post({action:'create',type:'plane',day:'第1天',activity:'測試航班',time:'09:00',arriveTime:'12:00',flightNo:'TEST',recordExpense:true,expense:200,currency:'JPY'});
   assert.equal(created.status,'success');
   const update=h.post({action:'update',id:created.id,type:'plane',time:'10:00',arriveTime:'13:00',activity:'更新航班',recordExpense:true,expense:0});
   assert.equal(update.status,'success');
   assert.equal(update.changes.flights[0].DepartTime,'10:00');
-  assert.equal(update.changes.expenses[0].Amount,'0');
+  assert.equal(update.changes.expenses[0].Amount,'200');
+  const expenseUpdate=h.post({action:'updateExpense',id:update.changes.expenses[0].ID,amount:0});
+  assert.equal(expenseUpdate.changes.expenses[0].Amount,'0');
   assert.equal(h.post({action:'delete',id:created.id}).changes.flights.length,0);
   assert.equal(h.sheets.get('Expense').rows.length,1);
 });
@@ -248,3 +250,77 @@ test('前端與 service worker JavaScript 語法可解析',()=>{
 });
 
 module.exports = {harness};
+
+
+test('帳務修改後儲存舊行程，不覆寫金額、幣別或分攤資料',()=>{
+  const h=harness();
+  const created=h.post({action:'create',day:'第1天',activity:'晚餐',recordExpense:true,expense:'100',currency:'JPY'});
+  const id=created.changes.expenses[0].ID;
+  h.post({action:'updateExpense',id,amount:'200',currency:'TWD',description:'實際晚餐',participants:'A,B',payer:'A',category:'餐飲'});
+  const before=JSON.stringify(h.sheets.get('Expense').rows);
+  const result=h.post({action:'update',id:created.id,note:'只改備註',activity:'舊名稱',recordExpense:true,expense:'100',currency:'JPY',participants:'A',payer:'B'});
+  assert.equal(result.status,'success');
+  assert.equal(JSON.stringify(h.sheets.get('Expense').rows),before);
+  assert.equal(result.changes.expenses[0].Amount,'200');
+  const unlinked=h.post({action:'update',id:created.id,recordExpense:false,expense:'100'});
+  assert.equal(unlinked.changes.expenses.length,0);
+  assert.equal(unlinked.changes.itinerary[0].ExpenseID,'');
+  assert.equal(unlinked.changes.itinerary[0].Expense,'');
+});
+
+
+test('公開讀取及快取不含帳務與訂位；私人讀取需旅程授權',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  h.post({action:'createExpense',amount:'123',description:'PRIVATE_EXPENSE',payer:'PRIVATE_PAYER'});
+  h.post({action:'updateFlight',id:h.seed.flights[0].ID,bookingRef:'PRIVATE_BOOKING',note:'PRIVATE_NOTE'});
+  for(let i=0;i<2;i++) {
+    const result=h.get({trip:h.seed.tripId});
+    assert.equal(result.expenses.length,0);
+    assert.doesNotMatch(JSON.stringify(result),/PRIVATE_/);
+  }
+  for(const apiKey of ['', 'invalid', 'other-key']) {
+    assert.equal(h.post({action:'readPrivate',apiKey}).status,'error');
+  }
+  const result=h.post({action:'readPrivate',apiKey:'nov-key'});
+  assert.equal(result.data.expenses[0].Amount,'123');
+  assert.equal(result.data.flights[0].BookingRef,'PRIVATE_BOOKING');
+  assert.equal(h.post({action:'verify',apiKey:'nov-key'}).data.expenses.length,1);
+});
+
+test('無預設旅程不回傳跨旅程資料，舊版版本號無法命中公開快取',()=>{
+  const h=harness();h.context.importNovemberTrip_(h.ss);h.sheets.get('Config').rows=[['Key','Value']];
+  assert.equal(h.get({}).itinerary.length,0);
+  const result=h.get({trip:h.seed.tripId,version:'1.0.123'});
+  assert.equal(result.notModified,undefined);
+  assert.match(result.version,/^secure-v2\./);
+});
+
+test('格式驗證在寫入前拒絕非法時間、金額、日期、網址及公式',()=>{
+  const h=harness();
+  for(const patch of [{time:'25:00'},{time:'<img src=x>'},{expense:'1x'},{duration:-1},{date:'2026-02-30'},{mapUrl:'javascript:alert(1)'},{imageUrl:'data:text/html,test'},{activity:'=IMPORTXML("url","*")'},{type:'invalid'},{currency:'USD'}]) {
+    const before=h.metrics.writes;
+    assert.equal(h.post({action:'create',activity:'測試',...patch}).status,'error');
+    assert.equal(h.metrics.writes,before);
+  }
+});
+
+test('航班與行程雙向同步時間日期，已關聯航班不可單獨刪除',()=>{
+  const h=harness();h.context.importNovemberTrip_(h.ss);
+  const item=h.seed.itinerary.find(i=>i.Type==='plane');
+  let result=h.post({action:'updateFlight',id:item.FlightID,departTime:'15:00',arriveTime:'18:00',departDate:'2026-11-02'});
+  assert.equal(result.changes.itinerary.find(i=>i.ID===item.ID).Time,'15:00');
+  assert.equal(result.changes.itinerary.find(i=>i.ID===item.ID).Date,'2026-11-02');
+  const before=h.metrics.writes;
+  assert.equal(h.post({action:'deleteFlight',id:item.FlightID}).status,'error');
+  assert.equal(h.metrics.writes,before);
+  result=h.post({action:'update',id:item.ID,type:'plane',time:'16:00',arriveTime:'19:00',departDate:'2026-11-03'});
+  assert.equal(result.changes.flights.find(f=>f.ID===item.FlightID).DepartTime,'16:00');
+  assert.equal(result.changes.itinerary.find(i=>i.ID===item.ID).Date,'2026-11-03');
+  h.sheets.get('Itinerary').rows.find(r=>r[0]===item.ID)[2]='STALE';
+  assert.equal(h.get({trip:h.seed.tripId}).itinerary.find(i=>i.ID===item.ID).Time,'16:00');
+  result=h.post({action:'update',id:item.ID,type:'activity'});
+  assert.equal(result.changes.itinerary.find(i=>i.ID===item.ID).FlightID,'');
+  assert.equal(result.changes.flights.some(f=>f.ID===item.FlightID),false);
+  const independent=h.post({action:'createFlight',flightNo:'LOCAL'});
+  assert.equal(h.post({action:'deleteFlight',id:independent.id}).status,'success');
+});

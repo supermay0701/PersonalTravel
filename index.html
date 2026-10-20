@@ -254,6 +254,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
             <input type="checkbox" id="edit-record-expense" onchange="toggleExpenseFields('edit')" class="accent-amber-500 w-5 h-5">
             <span class="text-sm font-bold text-amber-700">💰 記錄到費用表（納入帳務統計）</span>
           </label>
+          <p id="edit-linked-expense" class="hidden text-sm text-amber-800 mb-2">已記帳費用以帳務資料為準。<button type="button" onclick="editLinkedExpense()" class="underline font-bold">前往編輯費用</button>（離開將放棄尚未儲存的行程修改）</p>
           <div id="edit-expense-fields" class="hidden p-3 bg-amber-50 rounded-xl border-2 border-amber-200">
             <div class="grid grid-cols-2 gap-2 mb-2">
               <div><label class="block text-xs font-bold text-gray-600 mb-0.5">📂 分類</label>
@@ -418,6 +419,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         <div class="mb-3"><label class="block text-xs font-bold text-gray-600 mb-1">訂位代號</label><input type="text" id="flight-booking" placeholder="ABC123" class="w-full border-2 border-gray-200 p-2 rounded-lg text-sm focus:ring-2 focus:ring-sky-400 outline-none"></div>
         <div class="mb-4"><label class="block text-xs font-bold text-gray-600 mb-1">備註</label><input type="text" id="flight-note" class="w-full border-2 border-gray-200 p-2 rounded-lg text-sm focus:ring-2 focus:ring-sky-400 outline-none"></div>
         <div class="flex justify-between items-center">
+          <button id="flight-linked-btn" onclick="openLinkedFlightItinerary()" class="hidden text-sky-700 font-bold">前往關聯行程</button>
           <button id="flight-delete-btn" onclick="deleteFlight()" class="text-red-400 hover:text-red-600 text-sm font-bold transition hidden">🗑️ 刪除航班</button>
           <div class="flex gap-3 ml-auto">
             <button onclick="closeFlightModal()" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-bold">取消</button>
@@ -633,6 +635,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       loadData();
     }
     function init() {
+      clearLegacyPrivateCaches();
       buildTripDropdown();
       const hint = localStorage.getItem('defaultTripHint');
       const provisional = (TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : (TRIPS[hint] ? hint : DEFAULT_TRIP);
@@ -650,11 +653,34 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 
     let dataRequestId = 0, dataAbort = null, authEpoch = 0;
     const WRITE_ACTIONS = new Set(['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip']);
+    function publicData(data) {
+      return {...data, expenses:[], participants:[],
+        itinerary:(data.itinerary || []).map(r => ({...r, Expense:r.ExpenseID ? '' : r.Expense, Participants:''})),
+        flights:(data.flights || []).map(r => ({...r, BookingRef:'', Note:''}))};
+    }
     function saveCache(trip, data) {
-      try { localStorage.setItem('cache_' + trip, JSON.stringify(data)); } catch(e) { console.warn('無法儲存離線快取', e); }
+      try { localStorage.setItem('cache_' + trip, JSON.stringify(publicData(data))); } catch(e) { console.warn('無法儲存離線快取', e); }
+    }
+    function clearLegacyPrivateCaches() {
+      if (localStorage.getItem('publicCacheSchema') === '2') return;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('cache_') || key.startsWith('ver_'))) localStorage.removeItem(key);
+      }
+      localStorage.setItem('publicCacheSchema', '2');
+    }
+    function acceptAuth(result, key) {
+      if (!result.data) throw new Error('請先部署新版 GAS');
+      const empty = Object.values(result.data).every(rows => Array.isArray(rows) && rows.length === 0);
+      appData = empty && TRIP_ID === 'osaka-shiga-kumamoto202611' ? {...getNovemberTripSeed(), _preview:true} : result.data;
+      cachedApiKey = key; isEditMode = true;
+      ++dataRequestId; if (dataAbort) dataAbort.abort();
+      saveCache(TRIP_ID, appData); localStorage.removeItem('ver_' + TRIP_ID);
+      updateEditUI(); renderAll();
     }
     async function apiPost(d) {
       const trip = d.tripId === undefined ? TRIP_ID : d.tripId;
+      const epoch = authEpoch;
       if (WRITE_ACTIONS.has(d.action)) {
         if (appData._preview && d.action !== 'importNovemberTrip') return {status:'error', message:'目前是文件預覽，請先匯入試算表再編輯'};
         ++dataRequestId;
@@ -663,7 +689,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       const response = await fetch(API_BASE, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({...d, tripId:trip})});
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const result = await response.json();
-      if (trip !== TRIP_ID) return {status:'stale', message:'已切換旅程，請回原旅程確認操作結果'};
+      if (trip !== TRIP_ID || epoch !== authEpoch) return {status:'stale', message:'已切換旅程，請回原旅程確認操作結果'};
       return result;
     }
     function refreshAfterWrite(result) {
@@ -700,11 +726,29 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     function calcEnd(s,d) { if(!s||!d) return null; const m=s.match(/(\d{1,2}):(\d{2})/); if(!m) return null; const t=parseInt(m[1])*60+parseInt(m[2])+parseInt(d); return String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
-    function esc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
-    function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function esc(s) { return escHtml(String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n')); }
+    function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function safeUrl(value) { return /^https?:\/\/[^\s<>"']+$/i.test(String(value || '')) ? String(value) : ''; }
     function isTr(t) { return t && t !== 'activity'; }
     function gtc(t) { return TC[t] || TC.transport; }
     function fmtExp(exp, cur) { if(!exp) return ''; const s = (cur==='TWD')?'NT$':'¥'; return s+exp; }
+    function flightView(item) {
+      if (item.Type !== 'plane' || !item.FlightID) return item;
+      const f = appData.flights.find(f => f.ID === item.FlightID);
+      return f ? {...item, Time:f.DepartTime, ActualEndTime:f.ArriveTime, Date:f.DepartDate} : {...item, Time:'', ActualEndTime:''};
+    }
+    function expenseView(item) {
+      if (!item.ExpenseID) return item;
+      const ex = appData.expenses.find(e => e.ID === item.ExpenseID);
+      return {...item, Expense:ex ? ex.Amount : '', Currency:ex ? ex.Currency : 'JPY'};
+    }
+    function editLinkedExpense() {
+      const item = appData.itinerary.find(i => i.ID === document.getElementById('edit-id').value);
+      if (!item || !appData.expenses.some(e => e.ID === item.ExpenseID)) {
+        showToast('找不到關聯費用，請重新整理核對。', true); return;
+      }
+      closeEditModal(); openExpenseModal(item.ExpenseID);
+    }
     function fmtParticipantBadge(pt, inline) {
       if (!pt) return '';
       const all = appData.participants.map(p=>p.Name).filter(Boolean);
@@ -725,9 +769,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       let renderedTrip = '';
       let cached = null;
       try { cached = JSON.parse(localStorage.getItem('cache_' + renderTrip) || 'null'); } catch(e) {}
-      if (cached && Array.isArray(cached.itinerary)) {
+      if (cached) cached = publicData(cached);
+      if (!isEditMode && cached && Array.isArray(cached.itinerary)) {
         appData = cached; renderAll(); renderedTrip = renderTrip;
-      } else if (renderTrip === 'osaka-shiga-kumamoto202611') {
+      } else if (!isEditMode && renderTrip === 'osaka-shiga-kumamoto202611') {
         appData = {...getNovemberTripSeed(), _preview:true};
         renderAll(); renderedTrip = renderTrip;
       }
@@ -738,9 +783,16 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       if (!force && cached && !cached._preview && requestedTrip && version) params.set('version', version);
       const timeout = setTimeout(() => controller.abort(), 25000);
       try {
-        const response = await fetch(API_BASE + '?' + params, {signal:controller.signal});
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const resp = await response.json();
+        let resp;
+        if (isEditMode && cachedApiKey) {
+          const privateResult = await apiPost({action:'readPrivate', apiKey:cachedApiKey});
+          if (privateResult.status !== 'success' || !privateResult.data) throw new Error(privateResult.message || '私人資料讀取失敗');
+          resp = {...privateResult, ...privateResult.data};
+        } else {
+          const response = await fetch(API_BASE + '?' + params, {signal:controller.signal});
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          resp = publicData(await response.json());
+        }
         if (requestId !== dataRequestId || requestedTrip !== TRIP_ID) return;
         if (resp.status !== 'success') throw new Error(resp.message || '同步失敗');
         if (!TRIP_ID) {
@@ -758,10 +810,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
           appData = {...getNovemberTripSeed(), _preview:true};
           localStorage.removeItem('ver_' + TRIP_ID);
         } else {
-          const unchanged = renderedTrip === TRIP_ID && cached && !cached._preview && version && String(resp.version) === version;
+          const unchanged = !isEditMode && renderedTrip === TRIP_ID && cached && !cached._preview && version && String(resp.version) === version;
           appData = next;
           saveCache(TRIP_ID, appData);
-          if (resp.version != null) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
+          if (resp.version != null && !isEditMode) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
           else localStorage.removeItem('ver_' + TRIP_ID);
           if (!unchanged) renderAll();
         }
@@ -782,6 +834,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     function renderItinerary(items) {
+      items = items.map(flightView);
       const ct = document.getElementById('itinerary-container'), tb = document.getElementById('tab-bar');
       ct.innerHTML = ''; tb.innerHTML = '';
       const allNames = appData.participants.map(p => p.Name).filter(Boolean);
@@ -976,6 +1029,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     function createActivityCard(item, idx) {
+      item = expenseView(flightView(item));
       const et = calcEnd(item.Time, item.Duration);
       const card = document.createElement('div');
       card.className = 'schedule-card p-3';
@@ -984,10 +1038,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       // Col1: time — start biggest, duration, end, actual
       let c1 = '<div class="activity-time flex-shrink-0 text-center" style="min-width:62px">';
       if (item.Time) {
-        c1 += '<div class="text-primary-700 font-black text-xl leading-tight">'+item.Time+'</div>';
-        if (item.Duration) c1 += '<div class="text-gray-600 text-xs mt-1 font-semibold">'+item.Duration+'分</div>';
+        c1 += '<div class="text-primary-700 font-black text-xl leading-tight">'+escHtml(item.Time)+'</div>';
+        if (item.Duration) c1 += '<div class="text-gray-600 text-xs mt-1 font-semibold">'+escHtml(item.Duration)+'分</div>';
         if (et) c1 += '<div class="text-gray-600 text-xs font-medium">~'+et+'</div>';
-        if (item.ActualEndTime) c1 += '<div class="text-green-600 text-xs font-semibold mt-0.5">🏁'+item.ActualEndTime+'</div>';
+        if (item.ActualEndTime) c1 += '<div class="text-green-600 text-xs font-semibold mt-0.5">🏁'+escHtml(item.ActualEndTime)+'</div>';
       }
       if (!item.Time) c1 += '<div class="text-gray-500 text-xs">時間未定</div>';
       c1 += '</div>';
@@ -1000,19 +1054,19 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       // Col3: expense centered
       let c3 = '<div class="flex-shrink-0 text-center" style="min-width:52px">';
       if (item.Expense) {
-        c3 += '<div class="text-red-500 font-bold text-sm leading-tight">'+fmtExp(item.Expense, item.Currency)+'</div>';
+        c3 += '<div class="text-red-500 font-bold text-sm leading-tight">'+escHtml(fmtExp(item.Expense, item.Currency))+'</div>';
       }
       c3 += '</div>';
       if (!item.Expense) c3 = '';
       // Col4: thumbnail — clickable if MapURL
       let thumbInner;
-      if (item.ImageURL) {
-        thumbInner = '<img src="'+escHtml(item.ImageURL)+'" alt="" class="w-14 h-14 rounded-xl object-cover shadow-sm" onerror="this.outerHTML=defThumb('+idx+')">';
+      if (safeUrl(item.ImageURL)) {
+        thumbInner = '<img src="'+escHtml(safeUrl(item.ImageURL))+'" alt="" class="w-14 h-14 rounded-xl object-cover shadow-sm" onerror="this.outerHTML=defThumb('+idx+')">';
       } else {
         thumbInner = defThumb(idx);
       }
       let c4 = item.MapURL
-        ? '<a href="'+escHtml(item.MapURL)+'" target="_blank" rel="noopener" class="activity-thumb flex-shrink-0 block" aria-label="Google Maps">'+thumbInner+'<small class="activity-map-label">地圖 ↗</small></a>'
+        ? '<a href="'+escHtml(safeUrl(item.MapURL))+'" target="_blank" rel="noopener" class="activity-thumb flex-shrink-0 block" aria-label="Google Maps">'+thumbInner+'<small class="activity-map-label">地圖 ↗</small></a>'
         : '<div class="flex-shrink-0">'+thumbInner+'</div>';
       card.innerHTML = '<div class="relative">'+editH+'<div class="flex items-center gap-2.5">'+c1+'<div class="w-px self-stretch bg-gray-200"></div>'+c2+c3+c4+'</div></div>';
       return card;
@@ -1052,6 +1106,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       return info;
     }
     function createTransportCard(item) {
+      item = expenseView(flightView(item));
       const c = gtc(item.Type), et = getItemEndTime(item), info = getTransportInfo(item);
       const palette = {plane:['#f0f9ff','#7dd3fc','#0369a1'],subway:['#ecfdf5','#6ee7b7','#047857'],bus:['#fff7ed','#fdba74','#c2410c'],train:['#f5f3ff','#c4b5fd','#6d28d9'],taxi:['#fffbeb','#fcd34d','#b45309'],bicycle:['#f7fee7','#bef264','#4d7c0f'],walking:['#f5f5f4','#d6d3d1','#57534e']};
       const colors = palette[item.Type] || ['#ecfeff','#67e8f9','#0e7490'];
@@ -1063,7 +1118,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       detail.style.setProperty('--tr-bg', colors[0]);
       detail.style.setProperty('--tr-border', colors[1]);
       detail.style.setProperty('--tr-ink', colors[2]);
-      const duration = item.Type === 'plane' ? '起降採各機場當地時間' : (item.Duration ? '約 '+item.Duration+' 分鐘' : '依當天安排');
+      const duration = item.Type === 'plane' ? '起降採各機場當地時間' : (item.Duration ? '約 '+escHtml(item.Duration)+' 分鐘' : '依當天安排');
       const link = (label,url) => '<a href="'+escHtml(url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(label)+' ↗</a>';
       const mapURL = /^https?:\/\//i.test(item.MapURL || '') ? item.MapURL : '';
       detail.innerHTML = '<summary><span class="transport-icon">'+c.icon+'</span><div class="transport-summary"><div class="transport-time"><strong>'+escHtml(item.Time || '時間未定')+(et?' <span>→</span> '+escHtml(et):'')+'</strong><small>'+escHtml(duration)+'</small>'+(item.Expense?'<span class="transport-expense">'+escHtml(fmtExp(item.Expense,item.Currency))+'</span>':'')+'</div><h3>'+escHtml(item.Activity || c.label)+'</h3>'+fmtParticipantBadge(item.Participants,true)+'</div><span class="expand-label"><span class="closed-label">詳情</span><span class="open-label">收合</span> <span class="chevron">⌄</span></span></summary><div class="transport-content"><dl><div><dt>搭乘方式</dt><dd>'+escHtml(info.service)+'</dd></div><div><dt>注意事項</dt><dd>'+escHtml(item.Note || '依當天狀況調整。')+'</dd></div></dl><div class="transport-links">'+info.links.map(([label,url])=>link(label,url)).join('')+(mapURL?link('Google Maps',mapURL):'')+'</div></div>';
@@ -1087,7 +1142,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       let h = '<div class="space-y-4">';
       flights.forEach(f => {
         let eb = isEditMode ? '<button onclick="openFlightModal(\''+esc(f.ID)+'\')" class="text-sky-200 hover:text-white text-sm font-bold">✏️</button>' : '';
-        h += '<div class="bg-white rounded-xl overflow-hidden shadow-lg"><div class="bg-gradient-to-r from-sky-600 to-sky-800 text-white px-5 py-3 flex justify-between items-center"><div class="font-bold text-lg">✈️ '+(f.FlightNo||'')+'</div><div class="flex items-center gap-2"><span class="text-sky-200 text-sm">'+(f.Airline||'')+'</span>'+eb+'</div></div><div class="p-5"><div class="flex items-center justify-between mb-3"><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+(f.DepartAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+(f.DepartDate||'')+' '+(f.DepartTime||'')+'</div></div><div class="flex-1 mx-4 flex items-center"><div class="flex-1 border-t-2 border-dashed border-sky-200"></div><span class="mx-2 text-sky-300 text-lg">✈️</span><div class="flex-1 border-t-2 border-dashed border-sky-200"></div></div><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+(f.ArriveAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+(f.ArriveDate||'')+' '+(f.ArriveTime||'')+'</div></div></div>'+(f.BookingRef||f.Note?'<div class="border-t border-dashed border-gray-200 pt-3 text-xs text-gray-500 flex flex-wrap gap-4">'+(f.BookingRef?'<span>📋 訂位: '+f.BookingRef+'</span>':'')+(f.Note?'<span>📝 '+f.Note+'</span>':'')+'</div>':'')+'</div></div>';
+        h += '<div class="bg-white rounded-xl overflow-hidden shadow-lg"><div class="bg-gradient-to-r from-sky-600 to-sky-800 text-white px-5 py-3 flex justify-between items-center"><div class="font-bold text-lg">✈️ '+escHtml(f.FlightNo||'')+'</div><div class="flex items-center gap-2"><span class="text-sky-200 text-sm">'+escHtml(f.Airline||'')+'</span>'+eb+'</div></div><div class="p-5"><div class="flex items-center justify-between mb-3"><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+escHtml(f.DepartAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+escHtml(f.DepartDate||'')+' '+escHtml(f.DepartTime||'')+'</div></div><div class="flex-1 mx-4 flex items-center"><div class="flex-1 border-t-2 border-dashed border-sky-200"></div><span class="mx-2 text-sky-300 text-lg">✈️</span><div class="flex-1 border-t-2 border-dashed border-sky-200"></div></div><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+escHtml(f.ArriveAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+escHtml(f.ArriveDate||'')+' '+escHtml(f.ArriveTime||'')+'</div></div></div>'+(f.BookingRef||f.Note?'<div class="border-t border-dashed border-gray-200 pt-3 text-xs text-gray-500 flex flex-wrap gap-4">'+(f.BookingRef?'<span>📋 訂位: '+escHtml(f.BookingRef)+'</span>':'')+(f.Note?'<span>📝 '+escHtml(f.Note)+'</span>':'')+'</div>':'')+'</div></div>';
       });
       if (isEditMode) h += '<div class="flex justify-center mt-4"><button onclick="openFlightModal()" class="px-6 py-2 bg-sky-600 text-white rounded-full font-bold hover:bg-sky-700 transition">✈️ 新增航班</button></div>';
       h += '</div>'; ct.innerHTML = h;
@@ -1104,7 +1159,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         const chk = item.Checked&&item.Checked.toUpperCase()==='TRUE';
         const clk = isEditMode ? ' onclick="toggleCheckItem(\''+esc(item.ID)+'\')" style="cursor:pointer"' : '';
         const del = isEditMode ? '<button onclick="event.stopPropagation();deleteCheckItem(\''+esc(item.ID)+'\')" class="ml-auto text-red-300 hover:text-red-500 flex-shrink-0 text-sm transition" title="刪除">🗑️</button>' : '';
-        h += '<div class="bg-white/95 rounded-lg px-4 py-3 flex items-center gap-3 transition hover:bg-white"'+clk+'><div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 '+(chk?'bg-emerald-500 border-emerald-500 text-white':'border-gray-300')+'">'+(chk?'<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>':'')+'</div><span class="font-medium '+(chk?'text-gray-400 line-through':'text-gray-800')+'">'+(item.Item||'')+'</span>'+del+'</div>';
+        h += '<div class="bg-white/95 rounded-lg px-4 py-3 flex items-center gap-3 transition hover:bg-white"'+clk+'><div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 '+(chk?'bg-emerald-500 border-emerald-500 text-white':'border-gray-300')+'">'+(chk?'<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>':'')+'</div><span class="font-medium '+(chk?'text-gray-400 line-through':'text-gray-800')+'">'+escHtml(item.Item||'')+'</span>'+del+'</div>';
       });
       h += '</div>';
       if (isEditMode) h += '<div class="flex justify-center mt-4"><button onclick="openCheckModal()" class="px-6 py-2 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition">➕ 新增項目</button></div>';
@@ -1135,7 +1190,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
           const sym = ex.Currency==='TWD'?'NT$':'¥';
           const icon = catIcons[ex.Category]||'📝';
           const linked = ex.LinkedItineraryID ? '<span class="text-xs text-blue-400 ml-1" title="來自行程">🔗</span>' : '';
-          h += '<div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2" onclick="openExpenseModal(\''+escHtml(ex.ID)+'\')">';
+          h += '<div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded px-2 -mx-2" onclick="openExpenseModal(\''+esc(ex.ID)+'\')">';
           h += '<div class="flex-1 min-w-0"><div class="flex items-center gap-1.5"><span class="text-sm">'+icon+'</span><span class="font-bold text-gray-800 text-sm truncate">'+escHtml(ex.Description||'')+'</span>'+linked+'</div>';
           h += '<div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5"><span>'+escHtml(ex.Day||'')+'</span>';
           if(ex.Time) h += '<span>'+escHtml(ex.Time)+'</span>';
@@ -1254,14 +1309,14 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       const epoch = authEpoch;
       apiPost({action:'verify',apiKey:k,tripId:TRIP_ID}).then(r=>{
         if (epoch !== authEpoch) return;
-        if (r.status === 'success') { cachedApiKey=k; isEditMode=true; updateEditUI(); renderAll(); }
+        if (r.status === 'success') acceptAuth(r, k);
       }).catch(()=>{}).finally(()=>{ authRestoreInFlight=false; });
     }
 
     function toggleEditMode() {
       if (isEditMode) {
         // 退出 = 登出：清除本機金鑰，下次需重新輸入密碼
-        ++authEpoch; isEditMode=false; cachedApiKey=null; localStorage.removeItem('authKey'); updateEditUI(); renderAll();
+        ++authEpoch; ++dataRequestId; if (dataAbort) dataAbort.abort(); isEditMode=false; cachedApiKey=null; appData=publicData(appData); localStorage.removeItem('authKey'); saveCache(TRIP_ID, appData); updateEditUI(); renderAll();
       } else { document.getElementById('auth-modal').classList.remove('hidden'); document.getElementById('auth-key').value=''; setTimeout(()=>document.getElementById('auth-key').focus(),100); }
     }
     function verifyPassword() {
@@ -1269,7 +1324,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       if (!k) { showToast('請輸入密碼', true); return; }
       const b = document.getElementById('auth-btn'); b.innerText='驗證中...'; b.disabled=true;
       apiPost({action:'verify',apiKey:k,tripId:TRIP_ID}).then(r=>{
-        if(r.status==='success'){cachedApiKey=k;isEditMode=true;localStorage.setItem('authKey',k);closeAuthModal();updateEditUI();renderAll();}else showToast('❌ '+r.message, true);
+        if(r.status==='success'){acceptAuth(r,k);localStorage.setItem('authKey',k);closeAuthModal();}else showToast('❌ '+r.message, true);
       }).catch(()=>showToast('網路錯誤', true)).finally(()=>{b.innerText='🔑 驗證';b.disabled=false;document.getElementById('auth-key').value='';});
     }
     function updateEditUI() {
@@ -1279,7 +1334,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     function openEditModal(id) {
-      const item = appData.itinerary.find(i=>i.ID===id); if(!item) return;
+      const raw = appData.itinerary.find(i=>i.ID===id); if(!raw) return;
+      const item = flightView(raw);
       document.getElementById('edit-id').value = id;
       document.getElementById('modal-title').innerText = '編輯: '+(item.Activity||'');
       document.getElementById('edit-type').value = item.Type||'activity';
@@ -1290,10 +1346,15 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       document.getElementById('edit-map-url').value = item.MapURL||'';
       document.getElementById('edit-image-url').value = item.ImageURL||'';
       document.getElementById('edit-note').value = item.Note||'';
-      document.getElementById('edit-expense').value = item.Expense||'';
-      document.getElementById('edit-currency').value = item.Currency||'JPY';
+      const cost = expenseView(item);
+      document.getElementById('edit-expense').value = cost.Expense||'';
+      document.getElementById('edit-currency').value = cost.Currency||'JPY';
       // Populate expense toggle and fields
       const hasExpense = !!(item.ExpenseID);
+      document.getElementById('edit-linked-expense').classList.toggle('hidden', !hasExpense);
+      ['expense','currency','expense-category','payer','paymethod'].forEach(field => {
+        document.getElementById('edit-' + field).disabled = hasExpense;
+      });
       document.getElementById('edit-record-expense').checked = hasExpense;
       document.getElementById('edit-expense-fields').classList.toggle('hidden', !hasExpense);
       if (hasExpense) {
@@ -1336,7 +1397,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 
     function copyItem() {
       const id = document.getElementById('edit-id').value;
-      const item = appData.itinerary.find(i=>i.ID===id); if(!item) return;
+      const raw = appData.itinerary.find(i=>i.ID===id); if(!raw) return;
+      const item = flightView(raw);
       closeEditModal();
       openAddModal(item.Day);
       // Pre-fill add modal with copied data
@@ -1348,8 +1410,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       document.getElementById('add-map-url').value = item.MapURL||'';
       document.getElementById('add-image-url').value = item.ImageURL||'';
       document.getElementById('add-note').value = item.Note||'';
-      document.getElementById('add-expense').value = item.Expense||'';
-      document.getElementById('add-currency').value = item.Currency||'JPY';
+      const cost = expenseView(item);
+      document.getElementById('add-expense').value = cost.Expense||'';
+      document.getElementById('add-currency').value = cost.Currency||'JPY';
       document.getElementById('add-date').value = item.Date||'';
       renderParticipantCheckboxes('add', item.Participants||'');
     }
@@ -1366,7 +1429,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         participants:getCheckedParticipants('edit'),
         recordExpense:document.getElementById('edit-record-expense').checked
       };
-      if (d.recordExpense) {
+      const linkedExpense = appData.itinerary.find(i => i.ID === d.id)?.ExpenseID;
+      if (linkedExpense) { delete d.expense; delete d.currency; }
+      if (d.recordExpense && !linkedExpense) {
         d.expenseCategory = document.getElementById('edit-expense-category').value;
         d.payer = document.getElementById('edit-payer').value;
         d.payMethod = document.getElementById('edit-paymethod').value;
@@ -1602,7 +1667,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       const f = id ? appData.flights.find(fl=>fl.ID===id) : null;
       document.getElementById('flight-id').value = id||'';
       document.getElementById('flight-modal-title').innerText = f?'✏️ 編輯航班':'✈️ 新增航班';
-      document.getElementById('flight-delete-btn').classList.toggle('hidden',!id);
+      const linked = id && appData.itinerary.some(i => i.FlightID === id);
+      document.getElementById('flight-delete-btn').classList.toggle('hidden',!id || linked);
+      document.getElementById('flight-linked-btn').classList.toggle('hidden',!linked);
       document.getElementById('flight-no').value = f?f.FlightNo||'':'';
       document.getElementById('flight-airline').value = f?f.Airline||'':'';
       document.getElementById('flight-depart-airport').value = f?f.DepartAirport||'':'';
@@ -1614,6 +1681,11 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       document.getElementById('flight-booking').value = f?f.BookingRef||'':'';
       document.getElementById('flight-note').value = f?f.Note||'':'';
       document.getElementById('flight-modal').classList.remove('hidden');
+    }
+    function openLinkedFlightItinerary() {
+      const id = document.getElementById('flight-id').value;
+      const item = appData.itinerary.find(i => i.FlightID === id);
+      if (item) { closeFlightModal(); openEditModal(item.ID); }
     }
     function closeFlightModal() { document.getElementById('flight-modal').classList.add('hidden'); }
 
