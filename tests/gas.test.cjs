@@ -287,12 +287,74 @@ test('公開讀取及快取不含帳務與訂位；私人讀取需旅程授權',
   assert.equal(h.post({action:'verify',apiKey:'nov-key'}).data.expenses.length,1);
 });
 
-test('無預設旅程不回傳跨旅程資料，舊版版本號無法命中公開快取',()=>{
+test('無預設設定時只回傳最新旅程，舊版版本號無法命中公開快取',()=>{
   const h=harness();h.context.importNovemberTrip_(h.ss);h.sheets.get('Config').rows=[['Key','Value']];
-  assert.equal(h.get({}).itinerary.length,0);
+  h.sheets.get('Itinerary').rows.push(['old','','','','','','舊行程','','','','','','other','','','','2026-01-01']);
+  const home=h.get({});
+  assert.equal(home.resolvedTrip,h.seed.tripId);
+  assert.ok(home.itinerary.length > 0);
+  assert.ok(home.itinerary.every(r=>r.TripID===h.seed.tripId));
   const result=h.get({trip:h.seed.tripId,version:'1.0.123'});
   assert.equal(result.notModified,undefined);
   assert.match(result.version,/^secure-v2\./);
+});
+
+test('預設行程需目標旅程密碼、驗證存在並儲存至 Config；網址參數優先',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  const before=h.metrics.writes;
+  for(const apiKey of ['','wrong','other-key']) assert.equal(h.post({action:'setDefaultTrip',apiKey}).status,'error');
+  assert.equal(h.metrics.writes,before);
+  assert.equal(h.post({action:'setDefaultTrip',tripId:'unknown'}).status,'error');
+  assert.equal(h.sheets.get('Config').rows[1][1],'other');
+  assert.equal(h.get({}).resolvedTrip,'other');
+  const saved=h.post({action:'setDefaultTrip',apiKey:'nov-key'});
+  assert.equal(saved.defaultTrip,h.seed.tripId);
+  assert.equal(saved.changes,undefined);
+  assert.equal(h.get({}).resolvedTrip,h.seed.tripId);
+  assert.equal(h.get({trip:'other'}).itinerary.length,0);
+  assert.equal(h.isLocked(),false);
+});
+
+test('缺少 Config 可建立；有設定時保留選擇，未設定時依旅程首日找最新',()=>{
+  const h=harness();h.context.importNovemberTrip_(h.ss);h.sheets.delete('Config');
+  assert.equal(h.get({}).resolvedTrip,h.seed.tripId);
+  h.sheets.get('Itinerary').rows.push(['future','','','','','','未來','','','','','','future','','','','2027-01-01']);
+  assert.equal(h.get({}).resolvedTrip,'future');
+  assert.equal(h.post({action:'setDefaultTrip'}).status,'success');
+  assert.equal(h.get({}).resolvedTrip,h.seed.tripId);
+});
+
+test('大津修訂保留原 ID、帳務與其他行程，新增項目可重跑且順序正確',()=>{
+  const h=harness(); h.context.importNovemberTrip_(h.ss);
+  const sheet=h.sheets.get('Itinerary');
+  sheet.rows=sheet.rows.filter(r=>!/^nov26-d2-[a-z]/.test(r[0]));
+  const train=sheet.rows.find(r=>r[0]==='nov26-d2-04');
+  train[5]='taxi'; train[8]='1500';train[13]='旅伴';train[15]='existing-expense';
+  const breakfast=sheet.rows.find(r=>r[0]==='nov26-d3-01'); breakfast[7]='保留提醒';
+  const others=JSON.stringify(['Expense','FlightInfo','Checklist','Config'].map(n=>h.sheets.get(n).rows));
+  const result=h.context.refreshNovemberOtsuPlan_(h.ss);
+  assert.equal(result.Itinerary,11);
+  assert.equal(train[5],'train');assert.equal(train[8],'1500');assert.equal(train[13],'旅伴');assert.equal(train[15],'existing-expense');
+  assert.equal(breakfast[7],'保留提醒');
+  assert.equal(JSON.stringify(['Expense','FlightInfo','Checklist','Config'].map(n=>h.sheets.get(n).rows)),others);
+  const writes=h.metrics.writes;h.context.refreshNovemberOtsuPlan_(h.ss);assert.equal(h.metrics.writes,writes);
+  const day=h.seed.itinerary.filter(r=>r.Day==='第2天').sort((a,b)=>a.Time.localeCompare(b.Time));
+  const order=['天孫神社參拜','午餐｜松本食堂','島ノ関駅 → 大津市役所前站｜京阪電車','確認皇子山入口、輕度伸展','琵琶湖疏水散步','三尾神社參拜','大津港散步','晚餐｜滋賀大津ふぐ料理（待預約）','Fresco 超市 大津店｜採買'];
+  assert.deepEqual(Array.from(day.filter(r=>order.includes(r.Activity)),r=>r.Activity),order);
+  assert.equal(day.find(r=>r.ID==='nov26-d2-07').Time,'18:15');
+  assert.match(h.seed.itinerary.find(r=>r.ID==='nov26-d3-07').Note,/如果不順就吃飯店附近/);
+});
+
+test('大津修訂先驗證所有 ID，衝突或缺少舊資料時不寫入',()=>{
+  for (const corrupt of ['conflict','missing']) {
+    const h=harness();h.context.importNovemberTrip_(h.ss);
+    const rows=h.sheets.get('Itinerary').rows;
+    if(corrupt==='conflict') rows.find(r=>r[0]==='nov26-d2-fresco')[12]='other';
+    else rows.splice(rows.findIndex(r=>r[0]==='nov26-d2-07'),1);
+    const before=h.metrics.writes;
+    assert.throws(()=>h.context.refreshNovemberOtsuPlan_(h.ss),/唯一的旅程記錄/);
+    assert.equal(h.metrics.writes,before);
+  }
 });
 
 test('格式驗證在寫入前拒絕非法時間、金額、日期、網址及公式',()=>{

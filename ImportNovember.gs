@@ -117,6 +117,34 @@ function refreshNovemberTransportPlan_(ss) {
   return applyNovemberUpdates_(ss, specs, seed.tripId);
 }
 
+// 2026/10/20：套用大津新動線並將首頁預設改為 11 月；僅部署時執行一次。
+function refreshNovemberOtsuPlan() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const result = refreshNovemberOtsuPlan_(ss);
+    setDefaultTrip_(ss, getNovemberTripSeed().tripId);
+    console.log(JSON.stringify(result));
+    return result;
+  } finally {
+    try { SpreadsheetApp.flush(); bumpDataGen(); }
+    finally { lock.releaseLock(); }
+  }
+}
+
+function refreshNovemberOtsuPlan_(ss) {
+  const seed = getNovemberTripSeed();
+  const existingIds = ['nov26-d2-03','nov26-d2-04','nov26-d2-05','nov26-d2-06','nov26-d2-07','nov26-d3-07'];
+  const records = seed.itinerary.filter(r => existingIds.includes(r.ID) || (r.Day === '第2天' && !/^nov26-d2-\d+$/.test(r.ID)));
+  return applyNovemberUpdates_(ss, [{
+    name:SHEETS.ITINERARY, columns:IT_COL, records,
+    allowInsertIds:records.filter(r => !existingIds.includes(r.ID)).map(r => r.ID),
+    fields:r => ({Time:r.Time, Duration:r.Duration, ActualEndTime:r.ActualEndTime,
+      Type:r.Type, Activity:r.Activity, Note:r.Note, MapURL:r.MapURL})
+  }], seed.tripId);
+}
+
 function applyNovemberUpdates_(ss, specs, tripId) {
   // 所有 ID 與表頭驗證通過才開始寫入，避免套用到其他旅程或錯誤欄位。
   const plans = specs.map(spec => {
@@ -126,16 +154,24 @@ function applyNovemberUpdates_(ss, specs, tripId) {
     if (Object.keys(spec.columns).some((h,i) => !data[0] || data[0][i] !== h)) throw new Error(spec.name + ' 欄位順序不符');
     const rows = spec.records.map(record => {
       const matches = data.map((row,i) => ({row,i})).filter(v => v.i > 0 && v.row[0] === record.ID);
+      if (!matches.length && (spec.allowInsertIds || []).includes(record.ID)) return {record};
       if (matches.length !== 1 || matches[0].row[spec.columns.TripID-1] !== tripId) throw new Error('找不到唯一的旅程記錄：' + record.ID);
       const current = matches[0], fields = spec.fields(record);
       Object.keys(fields).forEach(key => { if (current.row[spec.columns[key]-1] === fields[key]) delete fields[key]; });
       return {row:current.i+1, fields};
-    }).filter(r => Object.keys(r.fields).length);
+    }).filter(r => r.record || Object.keys(r.fields).length);
     return {sheet, rows, spec};
   });
   const result = {};
   plans.forEach(plan => {
-    plan.rows.forEach(r => setFields_(plan.sheet, r.row, plan.spec.columns, r.fields));
+    plan.rows.forEach(r => {
+      if (r.record) {
+        const row = plan.sheet.getLastRow() + 1;
+        if (row > plan.sheet.getMaxRows()) plan.sheet.insertRowsAfter(plan.sheet.getMaxRows(), 1);
+        const headers = Object.keys(plan.spec.columns);
+        plan.sheet.getRange(row, 1, 1, headers.length).setNumberFormat('@').setValues([headers.map(h => r.record[h] == null ? '' : r.record[h])]);
+      } else setFields_(plan.sheet, r.row, plan.spec.columns, r.fields);
+    });
     result[plan.spec.name] = plan.rows.length;
   });
   return result;

@@ -3,15 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function frontend() {
-  const storage = new Map(), requests = [], elements = new Map();
+function frontend(search = '?trip=osaka-shiga-kumamoto202611', initialStorage = []) {
+  const storage = new Map(initialStorage), requests = [], elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id,{textContent:'',classList:{toggle(){},add(){},remove(){}},style:{setProperty(){}},setAttribute(){}});
     return elements.get(id);
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
-    window:{location:{search:'?trip=osaka-shiga-kumamoto202611'}},
+    window:{location:{search}},
     document:{getElementById:element,documentElement:{style:{setProperty(){}}},querySelector:()=>null,
       createElement:tag=>({tagName:tag,children:[],dataset:{},style:{setProperty(){}},setAttribute(){},appendChild(child){this.children.push(child);}})},
     localStorage:{get length(){return storage.size;},key:i=>[...storage.keys()][i],getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
@@ -25,6 +25,42 @@ function frontend() {
   return {context,storage,requests,elements,run:code=>vm.runInContext(code,context)};
 }
 const payload = label => ({status:'success',version:label,itinerary:[{ID:label,Day:'第1天',Activity:label}],flights:[],checklist:[],participants:[],expenses:[]});
+
+test('直接進首頁忽略舊旅行選擇，由雲端解析；指定網址仍優先',async()=>{
+  const f=frontend('', [['tripChoice','tokyo2026'],['selectedTrip','tokyo2026']]);
+  assert.equal(f.run('TRIP_ID'),'');
+  const pending=f.run('loadData()');
+  assert.equal(new URL(f.requests[0].url).searchParams.has('trip'),false);
+  assert.equal(f.run('appData._preview'),true);
+  f.requests[0].resolve({...payload('server'),resolvedTrip:'hokkaido202606'}); await pending;
+  assert.equal(f.run('TRIP_ID'),'hokkaido202606');
+  assert.equal(f.storage.get('defaultTripHint'),'hokkaido202606');
+  assert.equal(frontend('?trip=tokyo2026').run('TRIP_ID'),'tokyo2026');
+  assert.equal(frontend('?trip=unknown').run('TRIP_ID'),'');
+});
+
+test('首次離線首頁仍能閱讀最新行程並有有效的旅程 ID',async()=>{
+  const f=frontend(''); const pending=f.run('loadData()');
+  f.requests[0].reject(new Error('offline')); await pending;
+  assert.equal(f.run('TRIP_ID'),'osaka-shiga-kumamoto202611');
+  assert.ok(f.run('appData.itinerary.some(r=>r.Activity.includes("松本食堂"))'));
+});
+
+test('預設行程必須解鎖且雲端確認成功才儲存提示；失敗可重試',async()=>{
+  const f=frontend(); f.run('showToast=()=>{};');
+  await f.run('setCurrentDefaultTrip()'); assert.equal(f.requests.length,0);
+  f.run("isEditMode=true;cachedApiKey='key';");
+  const pending=f.run('setCurrentDefaultTrip()');
+  assert.equal(f.elements.get('default-trip-btn').disabled,true);
+  assert.equal(f.storage.has('defaultTripHint'),false);
+  f.requests[0].resolve({status:'error',message:'金鑰錯誤'});await pending;
+  assert.equal(f.storage.has('defaultTripHint'),false);
+  assert.equal(f.elements.get('default-trip-btn').disabled,false);
+  const saved=f.run('setCurrentDefaultTrip()');
+  assert.equal(JSON.parse(f.requests[1].options.body).action,'setDefaultTrip');
+  f.requests[1].resolve({status:'success',defaultTrip:'osaka-shiga-kumamoto202611'});await saved;
+  assert.equal(f.storage.get('defaultTripHint'),'osaka-shiga-kumamoto202611');
+});
 
 test('雲端空表先顯示文件預覽，不誤存為已同步資料',async()=>{
   const f=frontend(); const pending=f.run('loadData()');

@@ -48,7 +48,7 @@ const ACTION_TABLES = {
   update: 'Itinerary', delete: 'Itinerary', updateFlight: 'FlightInfo', deleteFlight: 'FlightInfo',
   toggleCheck: 'Checklist', deleteCheck: 'Checklist', updateExpense: 'Expense', deleteExpense: 'Expense'
 };
-const MUTATIONS = ['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip'];
+const MUTATIONS = ['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip','setDefaultTrip'];
 
 function resolveRequestTrip_(req) {
   const table = ACTION_TABLES[req.action] || (req.afterId ? 'Itinerary' : '');
@@ -84,6 +84,30 @@ function getConfig(ss) {
   return cfg;
 }
 
+function latestTrip_(ss) {
+  const dates = {};
+  getSheetData(ss, SHEETS.ITINERARY).concat(getNovemberTripSeed().itinerary).forEach(r => {
+    if (r.TripID && /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && (!dates[r.TripID] || r.Date < dates[r.TripID])) dates[r.TripID] = r.Date;
+  });
+  return Object.keys(dates).sort((a,b) => dates[b].localeCompare(dates[a]) || a.localeCompare(b))[0];
+}
+
+function setDefaultTrip_(ss, tripId) {
+  if (!tripId || !getSheetData(ss, SHEETS.ITINERARY).some(r => r.TripID === tripId)) throw new Error('請選擇已匯入的旅程');
+  let sheet = ss.getSheetByName(SHEETS.CONFIG);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.CONFIG);
+    sheet.appendRow(['Key', 'Value']);
+  }
+  const rows = sheet.getDataRange().getDisplayValues();
+  if (!rows[0] || rows[0][0] !== 'Key' || rows[0][1] !== 'Value') throw new Error('Config 欄位順序不符');
+  const matches = rows.map((r,i) => ({r,i})).filter(v => v.i > 0 && v.r[0].trim() === 'defaultTrip');
+  if (matches.length > 1) throw new Error('Config 的 defaultTrip 重複，請先修正');
+  if (matches.length) {
+    if (matches[0].r[1] !== tripId) sheet.getRange(matches[0].i + 1, 2).setNumberFormat('@').setValue(tripId);
+  } else sheet.appendRow(['defaultTrip', tripId]);
+}
+
 function doGet(e) {
   let tripId = (e && e.parameter && e.parameter.trip) || '';
   const cache = CacheService.getScriptCache();
@@ -91,7 +115,8 @@ function doGet(e) {
   // 前端未指定 trip → 用 Config 的 defaultTrip 解析（短 TTL，直接改試算表能較快生效）
   let resolvedTrip = '';
   if (!tripId) {
-    const dt = getConfig(SpreadsheetApp.getActiveSpreadsheet()).defaultTrip || '';
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const dt = getConfig(ss).defaultTrip || latestTrip_(ss);
     if (dt) { tripId = dt; resolvedTrip = dt; }
   }
 
@@ -208,6 +233,10 @@ function doPost(e) {
       case 'deleteExpense': result = handleDeleteRow(req, user, output, SHEETS.EXPENSE); break;
       case 'searchPlace':   result = handleSearchPlace(req, user, output); break;
       case 'fetchMapImage': result = handleFetchMapImage(req, user, output); break;
+      case 'setDefaultTrip':
+        setDefaultTrip_(SpreadsheetApp.getActiveSpreadsheet(), req.tripId);
+        result = output.setContent(JSON.stringify({status:'success', message:'已設定首頁預設行程', defaultTrip:req.tripId}));
+        break;
       case 'importNovemberTrip':
         if (req.tripId !== getNovemberTripSeed().tripId) throw new Error('匯入旅程不符');
         result = output.setContent(JSON.stringify({status:'success', message:'11 月行程已匯入', imported:importNovemberTrip_(SpreadsheetApp.getActiveSpreadsheet())}));
@@ -222,7 +251,7 @@ function doPost(e) {
       writing = false;
       if (payload.status === 'success') {
         payload.tripId = req.tripId;
-        payload.changes = getChangedTables_(req);
+        if (req.action !== 'setDefaultTrip') payload.changes = getChangedTables_(req);
       }
       result.setContent(JSON.stringify(payload));
     }

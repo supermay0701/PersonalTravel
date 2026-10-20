@@ -141,6 +141,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       <button class="main-tab" data-section="expenses" onclick="switchSection('expenses')"><span class="mt-icon">💰</span><span class="mt-label">帳務</span></button>
     </div>
     <div id="edit-indicator" class="hidden bg-green-600 text-white text-center text-xs py-1.5 font-bold rounded-lg mb-5 tracking-wide">✏️ 編輯模式已啟用 — 點擊 🔓 可退出</div>
+    <button id="default-trip-btn" onclick="setCurrentDefaultTrip()" class="hidden mb-4 px-4 py-2 border border-white/30 rounded-lg text-white text-sm font-bold disabled:opacity-50">將目前旅行設為首頁預設</button>
     <div id="data-status" role="status" class="text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4 hidden"></div>
     <div id="november-info" class="hidden text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4">
       <p>⚾ 11/03 皇子山 09:00 報到 · 11/09 藤崎台 08:30 報到（08:10～08:20 到場）</p>
@@ -554,12 +555,12 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         primary:'#b64b32', primaryRgb:'182,75,50', primaryBorder:'#eea074',
         tw400:'251 146 60', tw600:'194 65 12', tw700:'154 52 18', tw900:'124 45 18' }
     };
-    const DEFAULT_TRIP = 'tokyo2026'; // 伺服器尚未回覆預設旅行前的暫用主題
+    const DEFAULT_TRIP = 'osaka-shiga-kumamoto202611'; // 雲端尚未回覆時先顯示最新行程
     let CUR = TRIPS[DEFAULT_TRIP];    // 目前生效的旅行設定（render 時讀取）
 
-    // 決定要顯示哪一趟：?trip= → 使用者用下拉明確選的（tripChoice）→ 空字串時交給伺服器 Config 預設解析。
-    // 注意：不用舊的 selectedTrip 鍵，避免先前 fallback 寫入的值蓋掉 DB 預設。
-    let TRIP_ID = new URLSearchParams(window.location.search).get('trip') || localStorage.getItem('tripChoice') || '';
+    // 指定網址優先；直接進首頁一律讀雲端預設，不讓上次瀏覽的旅行蓋過設定。
+    const urlTrip = new URLSearchParams(window.location.search).get('trip');
+    let TRIP_ID = Object.hasOwn(TRIPS, urlTrip) ? urlTrip : '';
 
     const TC = {
       plane:     { icon: '✈️', label: '飛機',   bg: 'bg-sky-50',     bd: 'border-sky-300',     tx: 'text-sky-700',     ln: 'border-sky-200' },
@@ -623,7 +624,6 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       if (t === TRIP_ID) return;
       ++authEpoch;
       TRIP_ID = t;
-      localStorage.setItem('tripChoice', t); // 明確的使用者選擇，會被記住
       const u = new URL(window.location.href); u.searchParams.set('trip', t); history.replaceState(null, '', u);
       // 切換旅行時退出編輯模式（金鑰可能不適用於其他旅行）
       isEditMode = false; cachedApiKey = null; updateEditUI();
@@ -652,7 +652,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     let dataRequestId = 0, dataAbort = null, authEpoch = 0;
-    const WRITE_ACTIONS = new Set(['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip']);
+    const WRITE_ACTIONS = new Set(['update','create','delete','createFlight','updateFlight','deleteFlight','toggleCheck','createCheck','deleteCheck','createExpense','updateExpense','deleteExpense','importNovemberTrip','setDefaultTrip']);
     function publicData(data) {
       return {...data, expenses:[], participants:[],
         itinerary:(data.itinerary || []).map(r => ({...r, Expense:r.ExpenseID ? '' : r.Expense, Participants:''})),
@@ -712,6 +712,25 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
     function updateImportUI() {
       document.getElementById('import-november').classList.toggle('hidden', !(TRIP_ID === 'osaka-shiga-kumamoto202611' && isEditMode && appData._preview));
+      document.getElementById('default-trip-btn').classList.toggle('hidden', !isEditMode);
+      document.getElementById('default-trip-btn').disabled = !!appData._preview || defaultTripSaving;
+    }
+    let defaultTripSaving = false;
+    async function setCurrentDefaultTrip() {
+      if (!isEditMode || !cachedApiKey || defaultTripSaving) return;
+      const button = document.getElementById('default-trip-btn');
+      defaultTripSaving = true; button.disabled = true; button.textContent = '儲存預設行程中…';
+      try {
+        const result = await apiPost({action:'setDefaultTrip', apiKey:cachedApiKey});
+        if (result.status === 'stale') return;
+        if (result.status !== 'success' || result.defaultTrip !== TRIP_ID) throw new Error(result.message || '請先部署新版 GAS');
+        localStorage.setItem('defaultTripHint', result.defaultTrip);
+        showToast('首頁預設已改為「' + CUR.name + '」');
+      } catch(e) { showToast('設定失敗：' + e.message, true); }
+      finally {
+        defaultTripSaving = false; button.textContent = '將目前旅行設為首頁預設';
+        updateImportUI();
+      }
     }
     async function importNovember() {
       const button = document.getElementById('import-november');
@@ -765,7 +784,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       dataAbort = new AbortController();
       const controller = dataAbort;
       const requestedTrip = TRIP_ID;
-      const renderTrip = requestedTrip || localStorage.getItem('defaultTripHint') || '';
+      const renderTrip = requestedTrip || localStorage.getItem('defaultTripHint') || DEFAULT_TRIP;
       let renderedTrip = '';
       let cached = null;
       try { cached = JSON.parse(localStorage.getItem('cache_' + renderTrip) || 'null'); } catch(e) {}
@@ -822,6 +841,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         tryRestoreAuth();
       } catch(e) {
         if (requestId !== dataRequestId) return;
+        if (!TRIP_ID) { TRIP_ID = renderTrip; applyTrip(TRIP_ID); }
         if (!renderedTrip) renderAll();
         setDataStatus(appData._preview ? '目前顯示文件預覽，雲端尚未連線。' : '暫時無法同步，顯示本機資料；請稍後重新整理。');
       } finally { clearTimeout(timeout); }
@@ -1331,6 +1351,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       document.getElementById('lock-btn').innerText=isEditMode?'🔓':'🔒';
       document.getElementById('lock-btn').title=isEditMode?'退出編輯模式':'進入編輯模式';
       document.getElementById('edit-indicator').classList.toggle('hidden',!isEditMode);
+      updateImportUI();
     }
 
     function openEditModal(id) {
