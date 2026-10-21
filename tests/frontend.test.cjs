@@ -26,6 +26,110 @@ function frontend(search = '?trip=osaka-shiga-kumamoto202611', initialStorage = 
 }
 const payload = label => ({status:'success',version:label,itinerary:[{ID:label,Day:'第1天',Activity:label}],flights:[],checklist:[],participants:[],expenses:[]});
 
+test('今日摘要以日本日期判斷，處理出發前、旅程結束與未定時間',()=>{
+  const f=frontend();
+  f.run('appData=getNovemberTripSeed()');
+  assert.equal(f.run("todayModel(new Date('2026-10-31T14:00:00Z')).before"),true);
+  assert.equal(f.run("todayModel(new Date('2026-11-01T15:01:00Z')).date"),'2026-11-02');
+  assert.equal(f.run("todayModel(new Date('2026-11-11T00:00:00Z')).after"),true);
+  assert.ok(f.run("todayModel(new Date('2026-11-03T12:00:00Z')).untimed.some(r=>r.item.Activity.includes('Tonkatsu'))"));
+});
+
+test('下一站倒數依台灣起飛時間，正在飛行依日本抵達時間',()=>{
+  const f=frontend(); f.run('appData=getNovemberTripSeed()');
+  assert.equal(f.run("todayModel(new Date('2026-11-01T06:30:00Z')).next[0].start"),Date.parse('2026-11-01T06:40:00Z'));
+  assert.equal(f.run("todayModel(new Date('2026-11-01T06:45:00Z')).ongoing[0].item.FlightID"),'nov26-flight-out');
+  assert.equal(f.run("todayModel(new Date('2026-11-01T09:00:00Z')).ongoing.some(r=>r.item.Type==='plane')"),false);
+  f.run("appData.flights[0].DepartAirport='UNKNOWN'");
+  assert.ok(f.run("Number.isNaN(itemTiming(appData.itinerary[0]).start)"));
+});
+
+test('同時出發保留所有安排，跨午夜項目仍顯示，下一站採時間順序',()=>{
+  const f=frontend(); f.run(`appData.itinerary=[
+    {ID:'late',Date:'2026-11-02',Time:'09:30',Activity:'稍後'},
+    {ID:'a',Date:'2026-11-02',Time:'09:00',Activity:'A'},
+    {ID:'b',Date:'2026-11-02',Time:'09:00',Activity:'B'},
+    {ID:'night',Date:'2026-11-01',Time:'23:30',ActualEndTime:'00:30',Activity:'夜車'}];`);
+  assert.equal(f.run("todayModel(new Date('2026-11-01T15:10:00Z')).ongoing[0].item.ID"),'night');
+  assert.equal(f.run("todayModel(new Date('2026-11-01T23:00:00Z')).next.map(r=>r.item.ID).join(',')"),'a,b');
+});
+
+test('測試開始後未填結束時間仍提示目前安排，航班導航指向出發機場',()=>{
+  const f=frontend(); f.run('appData=getNovemberTripSeed()');
+  assert.ok(f.run("todayModel(new Date('2026-11-03T01:30:00Z')).ongoing.some(r=>r.item.Activity.includes('測試｜開始'))"));
+  f.run("currentDay='第1天';renderTodayBrief(new Date('2026-11-01T06:30:00Z'))");
+  const html=f.elements.get('today-details').innerHTML;
+  assert.match(html,/出發機場地圖/);
+  assert.match(html,/query=TPE%20airport/);
+  assert.doesNotMatch(html,/query=.*関西/);
+});
+
+test('住宿卡連住期間可見，換飯店顯示新住宿，最後一天顯示退房',()=>{
+  const f=frontend(); f.run("appData=getNovemberTripSeed(); CUR=TRIPS[DEFAULT_TRIP]");
+  assert.equal(f.run("staysForDate('2026-11-03')[0].name"),'スーパーホテル大津駅前');
+  f.run("currentDay='第4天';renderStayBrief(new Date('2026-11-04T00:00:00Z'))");
+  assert.match(f.elements.get('stay-details').innerHTML,/今晚住宿/);
+  assert.match(f.elements.get('stay-details').innerHTML,/HOTEL SOVA/);
+  assert.doesNotMatch(f.elements.get('stay-details').innerHTML,/スーパーホテル/);
+  assert.doesNotMatch(f.elements.get('stay-brief').innerHTML,/HOTEL SOVA|熊本県/);
+  assert.match(f.elements.get('stay-brief').innerHTML,/aria-haspopup="dialog"/);
+  f.run("currentDay='第10天';renderStayBrief()");
+  assert.match(f.elements.get('stay-details').innerHTML,/當日退房/);
+  assert.equal(f.run("staysForDate('2026-11-11').length"),0);
+  f.run("appData.itinerary=appData.itinerary.filter(i=>i.ID!=='nov26-d4-06')");
+  assert.equal(f.run("staysForDate('2026-11-05').length"),0);
+});
+
+test('住宿起訖與入住安排使用目前行程資料，摘要文字及網址安全顯示',()=>{
+  const f=frontend(); f.run("appData=getNovemberTripSeed(); CUR=TRIPS[DEFAULT_TRIP]");
+  f.run("appData.itinerary.find(i=>i.ID==='nov26-d4-06').Date='2026-11-05'");
+  assert.equal(f.run("staysForDate('2026-11-04').some(s=>s.name.includes('SOVA'))"),false);
+  const html=f.run(`briefItem({item:{Day:"第1天');alert(1)//",Activity:'<img onerror=alert(1)>',MapURL:'javascript:alert(1)'}}, '下一站')`);
+  assert.doesNotMatch(html,/<img|href="javascript:/);
+  assert.match(html,/&lt;img/);
+});
+
+test('複製住宿地址有成功回饋，剪貼簿拒絕時提供手動複製指引',async()=>{
+  const f=frontend(); f.run("CUR=TRIPS[DEFAULT_TRIP];showToast=message=>globalThis.toast=message;");
+  f.context.navigator={clipboard:{writeText:async text=>{f.context.copied=text;}}};
+  await f.run("copyStayAddress('nov26-d2-06')");
+  assert.match(f.context.copied,/滋賀県大津市京町3-2-7/);
+  f.context.navigator.clipboard.writeText=async()=>{throw new Error('denied');};
+  await f.run("copyStayAddress('nov26-d2-06')");
+  assert.match(f.context.toast,/長按/);
+});
+
+test('精簡摘要只在旅行當天顯示，瀏覽其他日期僅提供回到今天',()=>{
+  const f=frontend();f.run("appData=getNovemberTripSeed();currentDay='第1天'");
+  f.run("renderTodayBrief(new Date('2026-10-21T00:00:00Z'))");
+  assert.equal(f.elements.get('today-brief').innerHTML,'');
+  f.run("renderTodayBrief(new Date('2026-11-01T06:30:00Z'))");
+  assert.match(f.elements.get('today-brief').innerHTML,/next-strip/);
+  assert.match(f.elements.get('today-brief').innerHTML,/10 分/);
+  assert.doesNotMatch(f.elements.get('today-brief').innerHTML,/travel-brief|href=/);
+  f.run("currentDay='第3天';renderTodayBrief(new Date('2026-11-01T06:30:00Z'))");
+  assert.match(f.elements.get('today-brief').innerHTML,/回到今天/);
+  assert.doesNotMatch(f.elements.get('today-brief').innerHTML,/next-strip|IT212/);
+  f.run("renderTodayBrief(new Date('2026-11-11T00:00:00Z'))");
+  assert.equal(f.elements.get('today-brief').innerHTML,'');
+});
+
+test('底部詳情開啟時鎖定背景，關閉清除內容與還原捲動',()=>{
+  const f=frontend();f.context.document.body={style:{overflow:'auto'}};
+  f.run("appData=getNovemberTripSeed();CUR=TRIPS[DEFAULT_TRIP];currentDay='第3天';renderStayBrief()");
+  const dialog=f.context.document.getElementById('travel-sheet');
+  dialog.showModal=()=>{dialog.open=true;};
+  dialog.close=()=>{dialog.open=false;f.run('finishTravelDetails()');};
+  f.run("openTravelDetails('stay')");
+  assert.equal(dialog.open,true);
+  assert.equal(f.context.document.body.style.overflow,'hidden');
+  assert.match(f.elements.get('travel-sheet-body').innerHTML,/スーパーホテル/);
+  f.run('closeTravelDetails()');
+  assert.equal(dialog.open,false);
+  assert.equal(f.context.document.body.style.overflow,'auto');
+  assert.equal(f.elements.get('travel-sheet-body').innerHTML,'');
+});
+
 test('直接進首頁忽略舊旅行選擇，由雲端解析；指定網址仍優先',async()=>{
   const f=frontend('', [['tripChoice','tokyo2026'],['selectedTrip','tokyo2026']]);
   assert.equal(f.run('TRIP_ID'),'');

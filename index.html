@@ -117,6 +117,22 @@
 .transport-wrap{position:relative}.transport-edit{position:absolute;top:10px;right:12px;z-index:2;background:white;border:1px solid #d1d5db;border-radius:6px;padding:3px 7px;color:#4b5563;font-size:12px}.transport-wrap.editable summary{padding-right:70px}.transport-expense{font-size:12px;color:#ef4444;font-weight:700}.activity-title{overflow-wrap:anywhere}.activity-map-label{display:block;text-align:center;font-size:10px;color:#9a3412;margin-top:3px}
 @media(max-width:600px){.timeline{padding-left:16px}.timeline:before{left:3px}.timeline-item:before{left:-17px}.timeline-item.is-transport:before{left:-15px}.transport-card{margin:0}.transport-card summary{padding:11px 10px;gap:8px}.transport-icon{font-size:21px}.transport-time{gap:4px 8px}.transport-time strong{font-size:15px}.transport-time small{font-size:10px}.transport-summary h3{font-size:13px}.expand-label{font-size:10px}.transport-content{font-size:12px;margin:0 11px}.transport-content dl>div{grid-template-columns:54px 1fr;gap:8px}.timeline .schedule-card{padding:10px}.activity-title{font-size:15px}.activity-note{font-size:12px}.activity-thumb img,.activity-thumb>div{width:36px;height:36px}.activity-time{min-width:50px!important}.activity-time .text-xl{font-size:17px}.activity-time .text-xs{font-size:11px}}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.travel-brief{border:1px solid rgba(var(--accent-rgb),.4);border-radius:14px;background:rgba(16,20,27,.76);color:#fff;padding:18px;margin-bottom:18px;overflow-wrap:anywhere}
+.brief-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.brief-kicker{font-size:12px;color:var(--led);letter-spacing:.06em}.brief-muted{font-size:12px;color:#c4c6cb;line-height:1.7}
+.brief-title{font-size:19px;font-weight:700;line-height:1.5;margin:5px 0}.brief-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.brief-actions a,.brief-actions button,.brief-today{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;border:1px solid #ffffff40;border-radius:8px;background:#ffffff0d;color:#fff;font:inherit;font-size:13px;text-decoration:none;cursor:pointer}
+.brief-actions .brief-primary{background:var(--accent);color:#201b13;border-color:var(--accent);font-weight:700}
+.brief-row{border-top:1px solid #ffffff20;padding-top:12px;margin-top:12px}.brief-address{font-family:system-ui,sans-serif;font-size:14px;line-height:1.7;user-select:all}
+.stay-details{margin-top:12px;font-size:13px;line-height:1.8}.stay-details summary{cursor:pointer;color:var(--led);min-height:32px}
+.day-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-width:0}.day-tools #tab-bar{flex:1;min-width:0;margin-bottom:0}.day-tools #stay-brief{flex-shrink:0}
+.day-scroll{display:none;flex-shrink:0;width:36px;height:44px;border:1px solid #ffffff40;border-radius:10px;background:#ffffff0d;color:var(--led);font-size:24px;cursor:pointer}.day-scroll:disabled{opacity:.25;cursor:default}
+@media(min-width:640px){.day-scroll{display:block}#tab-bar{scrollbar-width:thin;scrollbar-color:#ffffff50 transparent}#tab-bar::-webkit-scrollbar{display:block;height:5px}#tab-bar::-webkit-scrollbar-thumb{background:#ffffff50;border-radius:8px}}
+.stay-trigger,.brief-return{min-height:44px;padding:8px 12px;border:1px solid #ffffff40;border-radius:10px;background:#ffffff0d;color:var(--led);font-size:13px;cursor:pointer;white-space:nowrap}
+#today-brief:not(:empty){margin-bottom:16px}.next-strip{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:10px 12px;border:1px solid rgba(var(--accent-rgb),.35);border-radius:10px;background:#16141abf;color:white;text-align:left;cursor:pointer}.next-label,.next-wait{flex-shrink:0;color:var(--led);font-size:12px}.next-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.next-arrow{color:#c4c6cb}
+.travel-sheet{position:fixed;inset:auto 0 0;margin:0 auto;width:min(100%,620px);max-width:100%;max-height:85dvh;border:1px solid #ffffff30;border-bottom:0;border-radius:20px 20px 0 0;background:#211d22;color:#fff;padding:0;overscroll-behavior:contain;box-shadow:0 -12px 50px #0006}.travel-sheet::backdrop{background:#0009}.sheet-header{position:sticky;top:0;background:#211d22;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid #ffffff20}.sheet-header h2{font-size:16px;font-weight:700}.sheet-close{min-width:44px;min-height:44px;border:1px solid #ffffff30;border-radius:10px;color:white;background:transparent;cursor:pointer}.sheet-body{padding:18px 18px max(20px,env(safe-area-inset-bottom));overflow-wrap:anywhere}.sheet-body .travel-brief{padding:0;background:none;border:0;margin:0}.sheet-body .brief-row:first-child{margin-top:0;padding-top:0;border:0}
+@media(max-width:600px){.travel-brief{padding:14px}.brief-title{font-size:17px}}
+@media(max-width:600px){.timeline .activity-title{font-size:16px}.timeline .activity-note{font-size:12px}.timeline .transport-summary h3{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.transport-card .chevron{transition:none}}
   </style>
 </head>
@@ -160,7 +176,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       <button id="import-november" onclick="importNovember()" class="hidden mt-3 px-4 py-2 bg-primary-600 rounded-lg font-bold">將 11 月行程匯入 Google 試算表</button>
     </div>
     <div id="section-itinerary" class="app-section">
-      <div id="tab-bar" class="flex flex-nowrap gap-2 mb-6 overflow-x-auto hscroll px-1 py-1"></div>
+      <div class="day-tools">
+        <button id="day-prev" class="day-scroll" onclick="scrollDays(-1)" aria-label="向前捲動日期" aria-controls="tab-bar">‹</button>
+        <div id="tab-bar" class="flex flex-nowrap gap-2 overflow-x-auto hscroll px-1 py-1" onscroll="updateDayScrollButtons()"></div>
+        <button id="day-next" class="day-scroll" onclick="scrollDays(1)" aria-label="向後捲動日期" aria-controls="tab-bar">›</button>
+        <div id="stay-brief"></div>
+      </div>
+      <div id="today-brief"></div>
       <div id="itinerary-container"><div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div></div>
     </div>
     <div id="section-flights" class="app-section hidden">
@@ -176,6 +198,12 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       <div id="expenses-container"></div>
     </div>
   </div>
+
+  <dialog id="travel-sheet" class="travel-sheet" aria-labelledby="travel-sheet-title" onclick="if(event.target===this) closeTravelDetails()" onclose="finishTravelDetails()">
+    <div class="sheet-header"><h2 id="travel-sheet-title"></h2><button class="sheet-close" onclick="closeTravelDetails()" aria-label="關閉詳情" autofocus>✕</button></div>
+    <div id="travel-sheet-body" class="sheet-body"></div>
+  </dialog>
+  <div id="today-details" hidden></div><div id="stay-details" hidden></div>
 
   <!-- Tailwind safelist -->
   <div class="hidden">
@@ -548,6 +576,21 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       led:'⚾ OSAKA · SHIGA · KUMAMOTO ⚾', h1:'大阪・滋賀・熊本 10 日棒球之旅',
       sub:'2026.11.01 — 11.10 · 兩人 · 行程日本時間／航班當地時間', divider:'🍁 行程表 SCHEDULE ⚾',
       dayDivider:['🍁','⚾'], emptyEmoji:'🍁', icons:['⚾','🍁','🏯','🚄','🍜','♨️','🧢','🛍️'],
+      // 日期與安排時間以關聯行程為準；地址來自既有旅行資料。
+      stays: [
+        {name:'S.TRAINING CENTER HOTEL OSAKA', address:'大阪府大阪市福島区福島6-23-8',
+          checkInId:'nov26-d1-05', checkOutId:'nov26-d2-01',
+          info:'入住手續於對面「新梅田研修センター」1F 辦理，櫃檯 16:00～23:00。行李寄放請洽櫃檯。',
+          reception:'新梅田研修センター', source:'https://www.shinumedacenter.com/page4'},
+        {name:'スーパーホテル大津駅前', address:'滋賀県大津市京町3-2-7',
+          checkInId:'nov26-d2-06', checkOutId:'nov26-d4-01', luggageId:'nov26-d2-03',
+          info:'行程安排 11/4 10:00 前退房；入住規定與寄放服務以訂單及館方回覆為準。',
+          source:'https://www.superhotel.co.jp/s_hotels/otsu/'},
+        {name:'HOTEL SOVA 熊本 並木坂', address:'熊本県熊本市中央区城東町5-29-1',
+          checkInId:'nov26-d4-06', checkOutId:'nov26-d10-01',
+          info:'訂單與地址仍待核對；入住規定及行李寄放請向館方確認。',
+          source:'https://hotelsova.co.jp/namikizaka/'}
+      ],
       theme:{ ...TRIPS.tokyo2026.theme, themeColor:'#352018',
         bgGrad:'linear-gradient(180deg, #291c20 0%, #503023 48%, #24382d 100%)',
         scoreGrad:'linear-gradient(135deg, #211821 0%, #42251c 100%)',
@@ -641,6 +684,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       const provisional = (TRIP_ID && TRIPS[TRIP_ID]) ? TRIP_ID : (TRIPS[hint] ? hint : DEFAULT_TRIP);
       applyTrip(provisional);
       loadData();
+      setInterval(() => { if (!document.hidden) renderTodayBrief(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) renderTravelBriefs(); });
       if ('serviceWorker' in navigator) {
         // 新版 service worker 接管時自動重新載入一次，避免卡在舊版頁面
         let swReloaded = false;
@@ -849,8 +894,237 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 
     let currentDay = null; // track active day tab
     function renderAll() {
+      closeTravelDetails();
       updateImportUI();
       renderItinerary(appData.itinerary); renderFlights(appData.flights); renderChecklist(appData.checklist); renderExpenseReport();
+      renderTravelBriefs();
+    }
+
+    // ===== 旅途中快速查看：依時間推算，不代表實際抵達或完成 =====
+    function japanDate(now) {
+      return now.toLocaleDateString('sv-SE', {timeZone:'Asia/Tokyo'});
+    }
+    function localTimestamp(date, time, offset = '+09:00') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return NaN;
+      return Date.parse(date + 'T' + time + ':00' + offset);
+    }
+    function airportOffset(airport) {
+      const code = String(airport || '').trim().toUpperCase();
+      if (/^(TPE|TSA|KHH|RMQ|TNN)$/.test(code) || /桃園|松山|高雄|台中|臺中|台南|臺南/.test(code)) return '+08:00';
+      if (/^(KIX|ITM|UKB|NRT|HND|CTS|FUK|KMJ|OKA|NGO)$/.test(code) || /關西|関西|成田|羽田|千歲|千歳|福岡|熊本|大阪|那霸|那覇|中部/.test(code)) return '+09:00';
+      return null;
+    }
+    function itemTiming(item) {
+      if (item.Type === 'plane') {
+        const flight = appData.flights.find(f => f.ID === item.FlightID);
+        if (!flight) return {start:NaN, end:NaN};
+        const departOffset = airportOffset(flight.DepartAirport), arriveOffset = airportOffset(flight.ArriveAirport);
+        return {
+          start:departOffset ? localTimestamp(flight.DepartDate, flight.DepartTime, departOffset) : NaN,
+          end:arriveOffset ? localTimestamp(flight.ArriveDate, flight.ArriveTime, arriveOffset) : NaN
+        };
+      }
+      const start = localTimestamp(item.Date, item.Time);
+      let end = localTimestamp(item.Date, item.ActualEndTime);
+      if (Number.isFinite(end) && end < start) end += 86400000;
+      if (!Number.isFinite(end) && Number(item.Duration) > 0) end = start + Number(item.Duration) * 60000;
+      return {start, end};
+    }
+    function todayModel(now = new Date()) {
+      const date = japanDate(now), instant = now.getTime();
+      const items = appData.itinerary.map(flightView);
+      const dates = [...new Set(items.map(i => i.Date).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d || '')))].sort();
+      const rows = items.map(item => ({item, ...itemTiming(item)}));
+      const today = rows.filter(r => r.item.Date === date);
+      const lastStart = Math.max(...today.filter(r => r.start <= instant).map(r => r.start));
+      const ongoing = rows.filter(r => r.start <= instant && (r.end > instant ||
+        (!Number.isFinite(r.end) && r.item.Date === date && r.start === lastStart)));
+      const upcoming = rows.filter(r => r.start > instant).sort((a,b) => a.start - b.start);
+      const next = upcoming.length ? upcoming.filter(r => r.start === upcoming[0].start) : [];
+      return {date, dates, today, ongoing, next, before:dates.length > 0 && date < dates[0],
+        after:dates.length > 0 && date > dates[dates.length-1],
+        untimed:today.filter(r => !Number.isFinite(r.start))};
+    }
+    function briefMapLink(url, label = '開啟地圖') {
+      const safe = safeUrl(url);
+      return safe ? '<a class="brief-primary" href="'+escHtml(safe)+'" target="_blank" rel="noopener noreferrer">'+label+' ↗</a>' : '';
+    }
+    function briefItem(row, label) {
+      const item = row.item;
+      const flight = item.Type === 'plane' && appData.flights.find(f => f.ID === item.FlightID);
+      const map = flight?.DepartAirport ? 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(flight.DepartAirport+' airport') : item.MapURL;
+      return '<div class="brief-row"><p class="brief-kicker">'+escHtml(label)+'</p><h3 class="brief-title">'+escHtml(item.Activity)+'</h3>'+
+        '<p class="brief-muted">'+escHtml(item.Date || '')+' · '+escHtml(item.Time || '時間未定')+
+        (item.Type === 'plane' ? '（出發機場當地時間）' : '（日本時間）')+'</p>'+
+        (item.Participants ? '<p class="brief-muted">'+escHtml(item.Participants)+'</p>' : '')+
+        '<div class="brief-actions">'+briefMapLink(map, flight?.DepartAirport ? '出發機場地圖' : '開啟地圖')+
+        '<button onclick="openBriefDay(\''+esc(item.Day)+'\')">查看當日行程</button></div></div>';
+    }
+    function openBriefDay(day) {
+      switchSection('itinerary'); switchDay(day);
+      document.getElementById('tab-bar').scrollIntoView({block:'start', behavior:'smooth'});
+    }
+    function renderTodayBrief(now = new Date()) {
+      scheduleTravelLayout();
+      const model = todayModel(now), target = document.getElementById('today-brief');
+      const details = document.getElementById('today-details');
+      target.innerHTML = ''; details.innerHTML = '';
+      if (!model.dates.length || model.before || (model.after && !model.ongoing.length)) return;
+      const todayDay = model.today[0]?.item.Day;
+      if (todayDay && currentDay !== todayDay) {
+        target.innerHTML = '<button class="brief-return" onclick="openBriefDay(\''+esc(todayDay)+'\')">↩ 回到今天</button>';
+        return;
+      }
+      let html = '<section class="travel-brief" aria-label="今日與下一站"><div class="brief-heading"><div><p class="brief-kicker">TODAY · 今日／下一站</p>'+
+        '<p class="brief-muted">'+escHtml(model.date)+' · 日本時間</p></div>'+
+        (todayDay ? '<button class="brief-today" onclick="openBriefDay(\''+esc(todayDay)+'\')">回到今天</button>' : '')+'</div>';
+      if (model.before) html += '<h2 class="brief-title">旅程尚未開始</h2><p class="brief-muted">'+escHtml(model.dates[0])+' 出發，先看看第一站。</p>';
+      else if (model.after && !model.ongoing.length) html += '<h2 class="brief-title">這趟旅程已結束</h2><p class="brief-muted">可切換下方日期，回顧行程與住宿。</p>';
+      else if (!model.today.length && !model.ongoing.length) html += '<h2 class="brief-title">今天沒有排定行程</h2>';
+      model.ongoing.forEach(row => { html += briefItem(row, Number.isFinite(row.end) ? '依安排 · 此時行程' : '已到開始時間 · 結束時間未定'); });
+      if (!model.after) model.next.forEach(row => {
+        const minutes = Math.ceil((row.start - now.getTime()) / 60000);
+        const wait = minutes < 60 ? minutes+' 分鐘' : Math.floor(minutes/60)+' 小時'+(minutes%60 ? ' '+minutes%60+' 分鐘' : '');
+        const label = model.before ? '旅程第一站' : (row.item.Date === model.date ? '下一站 · 距離'+(isTr(row.item.Type)?'出發':'開始')+' '+wait : '接下來 · '+row.item.Date);
+        html += briefItem(row, label);
+      });
+      if (!model.before && !model.after && !model.ongoing.length && !model.next.some(r => r.item.Date === model.date) && model.today.length)
+        html += '<p class="brief-muted">今天已沒有接下來的定時行程。</p>';
+      if (model.untimed.length) html += '<p class="brief-muted brief-row">今日另有 '+model.untimed.length+' 項時間未定或時區待確認的安排，請查看當日行程。</p>';
+      html += '<p class="brief-muted" style="margin-top:12px">依行程時間推算；實際進度與交通狀況請自行確認。</p></section>';
+      details.innerHTML = html;
+      const next = model.next.filter(r => r.item.Date === model.date);
+      const rows = next.length ? next : model.ongoing;
+      if (!rows.length && !model.untimed.length) return;
+      const row = rows[0];
+      const minutes = row ? Math.ceil((row.start - now.getTime()) / 60000) : 0;
+      const wait = next.length ? (minutes < 60 ? minutes+' 分' : Math.floor(minutes/60)+' 小時'+(minutes%60 ? ' '+minutes%60+' 分' : '')) : '';
+      const label = next.length ? '下一站' : row ? '此時安排' : '時間未定';
+      const title = row ? (row.item.Time ? row.item.Time+' ' : '')+row.item.Activity+(rows.length > 1 ? '（另 '+(rows.length-1)+' 項）' : '') : '今日另有 '+model.untimed.length+' 項安排';
+      target.innerHTML = '<button class="next-strip" onclick="openTravelDetails(\'today\')" aria-haspopup="dialog" aria-label="'+escHtml(label+' '+title+(wait ? '，還有 '+wait : '')+'，查看詳情')+'"><span class="next-label">'+label+'</span><span class="next-title">'+escHtml(title)+'</span>'+(wait ? '<span class="next-wait">'+wait+'</span>' : '')+'<span class="next-arrow" aria-hidden="true">›</span></button>';
+    }
+    function staysForDate(date) {
+      return (CUR.stays || []).flatMap(stay => {
+        const checkIn = appData.itinerary.find(i => i.ID === stay.checkInId);
+        const checkOut = appData.itinerary.find(i => i.ID === stay.checkOutId);
+        // 缺少起訖或日期順序錯誤時不猜測連住期間。
+        if (!checkIn?.Date || !checkOut?.Date || checkIn.Date >= checkOut.Date) return [];
+        return [{...stay, checkIn, checkOut, luggage:appData.itinerary.find(i => i.ID === stay.luggageId)}];
+      }).filter(stay => date >= stay.checkIn.Date && date <= stay.checkOut.Date);
+    }
+    function renderStayBrief(now = new Date()) {
+      const target = document.getElementById('stay-brief');
+      const details = document.getElementById('stay-details');
+      target.innerHTML = ''; details.innerHTML = '';
+      const date = appData.itinerary.map(flightView).find(i => i.Day === currentDay && i.Date)?.Date;
+      if (!date) { target.innerHTML = ''; return; }
+      const stays = staysForDate(date);
+      const overnight = stays.filter(s => date < s.checkOut.Date);
+      const visible = overnight.length ? overnight : stays;
+      details.innerHTML = visible.map(stay => {
+        const checkout = date === stay.checkOut.Date;
+        const label = checkout ? '當日退房' : date === japanDate(now) ? '今晚住宿' : '當晚住宿';
+        const map = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(stay.name+' '+stay.address);
+        return '<section class="travel-brief" aria-label="住宿資訊"><p class="brief-kicker">🏨 '+label+' · '+escHtml(date)+'</p>'+
+          '<h2 class="brief-title">'+escHtml(stay.name)+'</h2><p class="brief-address">'+escHtml(stay.address)+'</p>'+
+          '<p class="brief-muted">'+escHtml(stay.checkIn.Date)+' 入住 → '+escHtml(stay.checkOut.Date)+' 退房</p>'+
+          '<div class="brief-actions">'+briefMapLink(map, '飯店地圖')+
+          '<button onclick="copyStayAddress(\''+esc(stay.checkInId)+'\')">複製日文地址</button>'+
+          (stay.reception ? briefMapLink('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(stay.reception), '入住櫃檯地圖') : '')+'</div>'+
+          '<details class="stay-details" open><summary>入住與行李資訊</summary>'+
+          '<p>安排入住：'+escHtml(stay.checkIn.Time || '時間未定')+'（日本時間，非館方入住規定）</p>'+
+          '<p>'+escHtml(stay.checkIn.Note || '')+'</p>'+
+          '<p>退房安排：'+escHtml(stay.checkOut.Activity)+'。'+escHtml(stay.checkOut.Note || '')+'</p>'+
+          (stay.luggage ? '<p>寄放安排：'+escHtml(stay.luggage.Date)+' '+escHtml(stay.luggage.Time)+' · '+escHtml(stay.luggage.Note)+'</p>' : '')+
+          '<p>'+escHtml(stay.info)+'</p><a href="'+escHtml(safeUrl(stay.source))+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">館方資訊 ↗</a></details></section>';
+      }).join('');
+      if (visible.length) target.innerHTML = '<button class="stay-trigger" onclick="openTravelDetails(\'stay\')" aria-haspopup="dialog" aria-label="查看 '+escHtml(date)+' 住宿資訊">🏨 住宿</button>';
+    }
+    let travelSheetScroll = '';
+    function openTravelDetails(kind) {
+      if (kind !== 'today' && kind !== 'stay') return;
+      const content = document.getElementById(kind+'-details').innerHTML;
+      if (!content) return;
+      const dialog = document.getElementById('travel-sheet');
+      document.getElementById('travel-sheet-title').textContent = kind === 'stay' ? '住宿資訊' : '今日／下一站';
+      document.getElementById('travel-sheet-body').innerHTML = content;
+      if (!dialog.open) {
+        travelSheetScroll = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        dialog.showModal();
+      }
+      dialog.scrollTop = 0;
+    }
+    function closeTravelDetails() {
+      const dialog = document.getElementById('travel-sheet');
+      if (dialog.open) dialog.close();
+    }
+    function finishTravelDetails() {
+      document.body.style.overflow = travelSheetScroll;
+      document.getElementById('travel-sheet-body').innerHTML = '';
+    }
+    async function copyStayAddress(id) {
+      const stay = (CUR.stays || []).find(s => s.checkInId === id);
+      if (!stay) return;
+      try { await navigator.clipboard.writeText(stay.name+'\n'+stay.address); showToast('已複製飯店名稱與日文地址'); }
+      catch(e) { showToast('無法自動複製，請長按卡片上的日文地址複製。', true); }
+    }
+    function renderTravelBriefs() {
+      renderTodayBrief(); renderStayBrief();
+    }
+
+    function scrollDays(direction) {
+      const bar = document.getElementById('tab-bar');
+      bar.scrollBy({left:direction * Math.max(160, bar.clientWidth * 0.7),
+        behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+    }
+    function updateDayScrollButtons() {
+      const bar = document.getElementById('tab-bar');
+      document.getElementById('day-prev').disabled = bar.scrollLeft <= 2;
+      document.getElementById('day-next').disabled = bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 2;
+    }
+    let travelLayoutFrame = 0, travelLayoutReady = false;
+    function scheduleTravelLayout() {
+      if (typeof requestAnimationFrame !== 'function') return;
+      if (!travelLayoutReady) {
+        travelLayoutReady = true;
+        window.addEventListener('resize', scheduleTravelLayout);
+        if (document.fonts) document.fonts.ready.then(scheduleTravelLayout);
+        if (typeof ResizeObserver === 'function') {
+          let lastWidth = -1;
+          new ResizeObserver(entries => {
+            const width = entries[0].contentRect.width;
+            if (width !== lastWidth) { lastWidth = width; scheduleTravelLayout(); }
+          }).observe(document.getElementById('section-itinerary'));
+        }
+      }
+      if (travelLayoutFrame) cancelAnimationFrame(travelLayoutFrame);
+      travelLayoutFrame = requestAnimationFrame(() => {
+        travelLayoutFrame = 0;
+        updateDayScrollButtons();
+        fitItineraryTitles();
+      });
+    }
+    function fitItineraryTitles() {
+      const mobile = window.matchMedia('(max-width: 600px)').matches;
+      document.querySelectorAll('.day-panel.active .activity-title, .day-panel.active .transport-summary h3, .next-title').forEach(title => {
+        title.style.fontSize = ''; title.style.whiteSpace = ''; title.style.overflow = ''; title.style.textOverflow = '';
+        if (!mobile || !title.clientWidth) return;
+        const compact = title.classList.contains('next-title');
+        let size = parseFloat(getComputedStyle(title).fontSize);
+        const minimum = title.classList.contains('activity-title') ? 13 : 12;
+        title.style.whiteSpace = 'nowrap';
+        title.style.overflow = 'hidden';
+        const tooLarge = () => title.scrollWidth > title.clientWidth + 1;
+        // 名稱超過一行就縮字；到最小字級仍放不下才換行。
+        while (size > minimum && tooLarge()) {
+          size = Math.max(minimum, size - 0.5);
+          title.style.fontSize = size + 'px';
+        }
+        if (!compact || tooLarge()) {
+          title.style.whiteSpace = 'normal'; title.style.overflow = 'visible'; title.style.textOverflow = 'clip';
+        }
+      });
     }
 
     function renderItinerary(items) {
@@ -1305,11 +1579,15 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
 
     function switchSection(s) {
+      closeTravelDetails();
       document.querySelectorAll('.main-tab').forEach(t=>t.classList.toggle('active',t.dataset.section===s));
       ['itinerary','flights','checklist','expenses'].forEach(x=>document.getElementById('section-'+x).classList.toggle('hidden',x!==s));
+      if (s === 'itinerary') scheduleTravelLayout();
     }
     function switchDay(d) {
       currentDay = d;
+      closeTravelDetails();
+      renderTravelBriefs();
       const panel = document.getElementById('panel-' + CSS.escape(d));
       if (panel && panel.buildContent) panel.buildContent();
       document.querySelectorAll('.day-tab').forEach(t=>t.classList.toggle('active',t.dataset.day===d));
