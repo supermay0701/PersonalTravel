@@ -26,6 +26,109 @@ function frontend(search = '?trip=osaka-shiga-kumamoto202611', initialStorage = 
 }
 const payload = label => ({status:'success',version:label,itinerary:[{ID:label,Day:'第1天',Activity:label}],flights:[],checklist:[],participants:[],expenses:[]});
 
+test('同步時間與離線日期一起儲存；舊快取不冒充已知同步時間',()=>{
+  const f=frontend(); const trip='osaka-shiga-kumamoto202611';
+  f.run("appData=getNovemberTripSeed();saveCache(TRIP_ID,appData,{synced:true})");
+  const cache=JSON.parse(f.storage.get('cache_'+trip));
+  assert.ok(cache._offline.syncedAt);
+  assert.equal(f.run('offlineInfo().dates.length'),10);
+  assert.equal(f.run('offlineInfo().dates[0]'),'2026-11-01');
+  f.storage.set('cache_'+trip,JSON.stringify({...cache,_offline:{syncedAt:'2020-01-01T00:00:00.000Z',savedAt:'2020-01-01T00:00:00.000Z'}}));
+  f.run('saveCache(TRIP_ID,appData,{changed:true})');
+  assert.equal(f.run('offlineInfo().syncedAt'),'2020-01-01T00:00:00.000Z');
+  assert.notEqual(f.run('offlineInfo().savedAt'),'2020-01-01T00:00:00.000Z');
+  f.storage.set('cache_'+trip,JSON.stringify(payload('legacy')));
+  assert.equal(f.run('offlineInfo().syncedAt'),'');
+  f.storage.set('cache_'+trip,JSON.stringify(cache));
+  f.run('appData._preview=true;saveCache(TRIP_ID,appData,{synced:true})');
+  assert.equal(f.run('offlineInfo().syncedAt'),'');
+  assert.equal(f.run('offlineInfo().savedAt'),'');
+  assert.equal(f.run('offlineInfo().preview'),true);
+});
+
+test('版本未變仍更新最後確認時間，失敗請求不更新時間',async()=>{
+  const f=frontend(), trip='osaka-shiga-kumamoto202611';
+  f.storage.set('cache_'+trip,JSON.stringify({...payload('old'),_offline:{syncedAt:'2020-01-01T00:00:00.000Z'}}));
+  f.storage.set('ver_'+trip,'v1');
+  const request=f.run('loadData()');
+  f.requests[0].resolve({status:'success',notModified:true,version:'v1'});await request;
+  const timestamp=f.run('offlineInfo().syncedAt');
+  assert.notEqual(timestamp,'2020-01-01T00:00:00.000Z');
+  const failed=f.run('loadData()'); f.requests[1].reject(new Error('offline'));await failed;
+  assert.equal(f.run('offlineInfo().syncedAt'),timestamp);
+  f.context.navigator={onLine:false}; f.run('renderSyncStatus()');
+  assert.match(f.elements.get('data-status').innerHTML,/目前離線/);
+});
+
+test('儲存失敗保留舊快取範圍與時間，也不保留新版本號',async()=>{
+  const f=frontend(), trip='osaka-shiga-kumamoto202611';
+  f.storage.set('cache_'+trip,JSON.stringify({...payload('old'),itinerary:[{Date:'2026-11-01'}],_offline:{syncedAt:'2020-01-01T00:00:00.000Z'}}));
+  f.storage.set('ver_'+trip,'v1');
+  const setter=f.context.localStorage.setItem;
+  f.context.localStorage.setItem=(key,value)=>{if(key.startsWith('cache_'))throw new Error('quota');setter(key,value);};
+  f.context.console={...console,warn(){}};
+  const request=f.run('loadData()');
+  f.requests[0].resolve({...payload('new'),itinerary:[{Date:'2026-11-02'}]});await request;
+  assert.equal(f.run('offlineInfo().dates.join()'),'2026-11-01');
+  assert.equal(f.run('offlineInfo().syncedAt'),'2020-01-01T00:00:00.000Z');
+  assert.equal(f.run('offlineInfo().failed'),true);
+  assert.equal(f.storage.has('ver_'+trip),false);
+});
+
+test('離線頁面備妥狀態必須有目前版本首頁快取，預覽路徑不冒充首頁',async()=>{
+  const f=frontend();
+  f.context.navigator={serviceWorker:{getRegistration:async()=>({active:{},scope:'https://example.test/travel/'})}};
+  f.context.location={pathname:'/travel/index.html'};
+  f.context.caches={keys:async()=>['travel-shell-v8'],open:async()=>({match:async()=>({})})};
+  await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'unavailable');
+  f.context.caches.keys=async()=>['travel-shell-v9'];
+  await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'ready');
+  f.context.location.pathname='/travel/.tmp/preview.html';
+  await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'unavailable');
+});
+
+test('分享模型只取當日公開欄位，使用航班時間並將未定時間放最後',()=>{
+  const f=frontend();f.run("appData=getNovemberTripSeed();CUR=TRIPS[DEFAULT_TRIP];currentDay='第1天'");
+  f.run("appData.itinerary[0].Note='PRIVATE_NOTE';appData.itinerary[0].Participants='PRIVATE_NAME';appData.flights[0].BookingRef='PRIVATE_BOOKING';appData.flights[0].DepartTime='15:10'");
+  assert.equal(f.run('shareDayModel().rows[0].time'),'15:10');
+  assert.match(f.run('shareDayModel().rows[0].meta'),/機場當地時間/);
+  assert.doesNotMatch(f.run('JSON.stringify(shareDayModel())'),/PRIVATE_|BookingRef|Participants|Expense|MapURL/);
+  assert.equal(f.run("shareDayModel('第3天').rows.at(-1).time"),'時間未定');
+  assert.equal(f.run("shareDayModel('不存在').rows.length"),0);
+  f.run("appData.itinerary.push({Day:'跨夜',Time:'23:30',Duration:'90',Activity:'夜間移動',Type:'train'})");
+  assert.equal(f.run("shareDayModel('跨夜').rows[0].end"),'→ 01:00（翌日）');
+});
+
+test('分享圖自動分頁且超長名稱不裁切遺漏',()=>{
+  const f=frontend();
+  f.context.measure={font:'',measureText(text){return {width:Array.from(text).length*32};}};
+  f.run("globalThis.longTitle='超長行程名稱'.repeat(200);globalThis.shareRows=Array.from({length:20},(_,i)=>({title:i===0?longTitle:'行程'+i,time:'08:00',end:'',meta:'活動'}));globalThis.sharePages=layoutSharePages(measure,shareRows)");
+  assert.ok(f.run('sharePages.length > 2'));
+  assert.equal(f.run("sharePages.flatMap(p=>p.rows).filter(r=>r.title===longTitle).flatMap(r=>r.titleLines).join('')"),f.run('longTitle'));
+  assert.equal(f.run('sharePages.every(p=>p.height<=1060 && p.rows.length<=8)'),true);
+  assert.equal(f.run("sharePages.flatMap(p=>p.rows).filter(r=>!r.continued).length"),20);
+});
+
+test('關閉分享預覽後，尚未完成的圖片不會回填或保留網址',async()=>{
+  const f=frontend(); const pendingBlobs=[],revoked=[];
+  f.context.document.body={style:{overflow:''}};
+  const sheet=f.context.document.getElementById('travel-sheet');
+  sheet.showModal=()=>{sheet.open=true;};sheet.close=()=>{sheet.open=false;f.run('finishTravelDetails()');};
+  f.context.document.createElement=()=>({getContext:()=>({})});
+  f.context.URL={createObjectURL:()=> 'blob:test',revokeObjectURL:url=>revoked.push(url)};
+  f.context.pendingBlobs=pendingBlobs;
+  f.run("appData=getNovemberTripSeed();currentDay='第2天';layoutSharePages=()=>[{},{}];drawSharePage=()=>({toBlob:callback=>pendingBlobs.push(callback)})");
+  const preview=f.run('openSharePreview()');
+  pendingBlobs.shift()({});await Promise.resolve();
+  assert.equal(f.run('shareImages.length'),1);
+  f.run('closeTravelDetails()');
+  pendingBlobs.shift()({});await preview;
+  assert.equal(f.run('shareImages.length'),0);
+  assert.deepEqual(revoked,['blob:test']);
+  assert.equal(f.elements.get('travel-sheet-body').innerHTML,'');
+  assert.equal(f.context.document.body.style.overflow,'');
+});
+
 test('今日摘要以日本日期判斷，處理出發前、旅程結束與未定時間',()=>{
   const f=frontend();
   f.run('appData=getNovemberTripSeed()');

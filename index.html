@@ -125,14 +125,16 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 .brief-actions .brief-primary{background:var(--accent);color:#201b13;border-color:var(--accent);font-weight:700}
 .brief-row{border-top:1px solid #ffffff20;padding-top:12px;margin-top:12px}.brief-address{font-family:system-ui,sans-serif;font-size:14px;line-height:1.7;user-select:all}
 .stay-details{margin-top:12px;font-size:13px;line-height:1.8}.stay-details summary{cursor:pointer;color:var(--led);min-height:32px}
-.day-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-width:0}.day-tools #tab-bar{flex:1;min-width:0;margin-bottom:0}.day-tools #stay-brief{flex-shrink:0}
+.day-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-width:0}.day-tools #tab-bar{flex:1;min-width:0;margin-bottom:0}
 .day-scroll{display:none;flex-shrink:0;width:36px;height:44px;border:1px solid #ffffff40;border-radius:10px;background:#ffffff0d;color:var(--led);font-size:24px;cursor:pointer}.day-scroll:disabled{opacity:.25;cursor:default}
 @media(min-width:640px){.day-scroll{display:block}#tab-bar{scrollbar-width:thin;scrollbar-color:#ffffff50 transparent}#tab-bar::-webkit-scrollbar{display:block;height:5px}#tab-bar::-webkit-scrollbar-thumb{background:#ffffff50;border-radius:8px}}
 .stay-trigger,.brief-return{min-height:44px;padding:8px 12px;border:1px solid #ffffff40;border-radius:10px;background:#ffffff0d;color:var(--led);font-size:13px;cursor:pointer;white-space:nowrap}
 #today-brief:not(:empty){margin-bottom:16px}.next-strip{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:10px 12px;border:1px solid rgba(var(--accent-rgb),.35);border-radius:10px;background:#16141abf;color:white;text-align:left;cursor:pointer}.next-label,.next-wait{flex-shrink:0;color:var(--led);font-size:12px}.next-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.next-arrow{color:#c4c6cb}
-.travel-sheet{position:fixed;inset:auto 0 0;margin:0 auto;width:min(100%,620px);max-width:100%;max-height:85dvh;border:1px solid #ffffff30;border-bottom:0;border-radius:20px 20px 0 0;background:#211d22;color:#fff;padding:0;overscroll-behavior:contain;box-shadow:0 -12px 50px #0006}.travel-sheet::backdrop{background:#0009}.sheet-header{position:sticky;top:0;background:#211d22;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid #ffffff20}.sheet-header h2{font-size:16px;font-weight:700}.sheet-close{min-width:44px;min-height:44px;border:1px solid #ffffff30;border-radius:10px;color:white;background:transparent;cursor:pointer}.sheet-body{padding:18px 18px max(20px,env(safe-area-inset-bottom));overflow-wrap:anywhere}.sheet-body .travel-brief{padding:0;background:none;border:0;margin:0}.sheet-body .brief-row:first-child{margin-top:0;padding-top:0;border:0}
+.travel-sheet{position:fixed;inset:auto 0 0;margin:0 auto;width:min(100%,620px);max-width:100%;height:92dvh;max-height:92dvh;border:1px solid #ffffff30;border-bottom:0;border-radius:20px 20px 0 0;background:#211d22;color:#fff;padding:0;overscroll-behavior:contain;box-shadow:0 -12px 50px #0006}.travel-sheet::backdrop{background:#0009}.sheet-header{position:sticky;top:0;background:#211d22;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid #ffffff20}.sheet-header h2{font-size:16px;font-weight:700}.sheet-close{min-width:44px;min-height:44px;border:1px solid #ffffff30;border-radius:10px;color:white;background:transparent;cursor:pointer}.sheet-body{padding:18px 18px max(20px,env(safe-area-inset-bottom));overflow-wrap:anywhere}.sheet-body .travel-brief{padding:0;background:none;border:0;margin:0}.sheet-body .brief-row:first-child{margin-top:0;padding-top:0;border:0}
 @media(max-width:600px){.travel-brief{padding:14px}.brief-title{font-size:17px}}
 @media(max-width:600px){.timeline .activity-title{font-size:16px}.timeline .activity-note{font-size:12px}.timeline .transport-summary h3{font-size:14px}}
+.status-line{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.status-line button{color:var(--led);font-size:12px;min-height:36px;white-space:nowrap}.offline-meta{font-size:11px;color:#c4c6cb;margin-top:3px}.offline-dates{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.offline-dates span{border:1px solid #ffffff30;border-radius:8px;padding:6px 10px;font-size:13px}.offline-section{margin:16px 0;line-height:1.8;font-size:14px}.offline-section strong{color:var(--led)}
+.day-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin:18px 0 8px}.day-actions .stay-trigger{min-width:112px;min-height:44px}.share-pages{display:grid;gap:16px;margin-top:16px}.share-page{margin:0}.share-page img{display:block;width:100%;height:auto;border-radius:8px;background:#fff}.share-page figcaption{margin-top:8px;font-size:12px;color:#c4c6cb}.share-download{display:inline-block;color:var(--led);text-decoration:underline;margin-left:12px;padding:8px 0}.share-help{font-size:12px;line-height:1.8;color:#c4c6cb}.share-feedback{font-size:13px;color:var(--led);margin:12px 0}
 @media(prefers-reduced-motion:reduce){.transport-card .chevron{transition:none}}
   </style>
 </head>
@@ -180,10 +182,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         <button id="day-prev" class="day-scroll" onclick="scrollDays(-1)" aria-label="向前捲動日期" aria-controls="tab-bar">‹</button>
         <div id="tab-bar" class="flex flex-nowrap gap-2 overflow-x-auto hscroll px-1 py-1" onscroll="updateDayScrollButtons()"></div>
         <button id="day-next" class="day-scroll" onclick="scrollDays(1)" aria-label="向後捲動日期" aria-controls="tab-bar">›</button>
-        <div id="stay-brief"></div>
       </div>
       <div id="today-brief"></div>
       <div id="itinerary-container"><div class="text-center py-20"><span class="spin-ball text-5xl">⚾</span><p class="text-white text-lg font-bold mt-4 tracking-wide">載入中...</p></div></div>
+      <div class="day-actions" role="group" aria-label="當日行程工具"><div id="stay-brief"></div><div id="share-brief"></div></div>
     </div>
     <div id="section-flights" class="app-section hidden">
       <div class="stitch-divider text-white mb-5 text-sm">✈️ 航班資訊 FLIGHTS ✈️</div>
@@ -685,14 +687,17 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       applyTrip(provisional);
       loadData();
       setInterval(() => { if (!document.hidden) renderTodayBrief(); }, 30000);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) renderTravelBriefs(); });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderTravelBriefs(); renderSyncStatus(); } });
+      window.addEventListener('offline', renderSyncStatus);
+      window.addEventListener('online', renderSyncStatus);
+      checkOfflineShell();
       if ('serviceWorker' in navigator) {
         // 新版 service worker 接管時自動重新載入一次，避免卡在舊版頁面
         let swReloaded = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (swReloaded) return; swReloaded = true; location.reload();
         });
-        navigator.serviceWorker.register('sw.js').catch(()=>{});
+        navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(checkOfflineShell).catch(()=>{});
       }
     }
 
@@ -703,8 +708,24 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         itinerary:(data.itinerary || []).map(r => ({...r, Expense:r.ExpenseID ? '' : r.Expense, Participants:''})),
         flights:(data.flights || []).map(r => ({...r, BookingRef:'', Note:''}))};
     }
-    function saveCache(trip, data) {
-      try { localStorage.setItem('cache_' + trip, JSON.stringify(publicData(data))); } catch(e) { console.warn('無法儲存離線快取', e); }
+    const cacheWriteFailures = new Set();
+    function readCachedTrip(trip) {
+      try {
+        const data = JSON.parse(localStorage.getItem('cache_' + trip) || 'null');
+        return data && Array.isArray(data.itinerary) ? data : null;
+      } catch(e) { return null; }
+    }
+    function saveCache(trip, data, options = {}) {
+      try {
+        const previous = readCachedTrip(trip);
+        const oldMeta = previous?._offline || {};
+        const now = new Date().toISOString();
+        const syncedAt = data._preview ? '' : options.synced ? now : oldMeta.syncedAt || '';
+        const savedAt = data._preview ? '' : options.synced || options.changed ? now : oldMeta.savedAt || '';
+        localStorage.setItem('cache_' + trip, JSON.stringify({...publicData(data), _offline:{syncedAt, savedAt}}));
+        cacheWriteFailures.delete(trip);
+        return true;
+      } catch(e) { cacheWriteFailures.add(trip); console.warn('無法儲存離線快取', e); return false; }
     }
     function clearLegacyPrivateCaches() {
       if (localStorage.getItem('publicCacheSchema') === '2') return;
@@ -720,8 +741,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       appData = empty && TRIP_ID === 'osaka-shiga-kumamoto202611' ? {...getNovemberTripSeed(), _preview:true} : result.data;
       cachedApiKey = key; isEditMode = true;
       ++dataRequestId; if (dataAbort) dataAbort.abort();
-      saveCache(TRIP_ID, appData); localStorage.removeItem('ver_' + TRIP_ID);
+      saveCache(TRIP_ID, appData, {synced:!appData._preview}); localStorage.removeItem('ver_' + TRIP_ID);
       updateEditUI(); renderAll();
+      setDataStatus(appData._preview ? '文件行程預覽' : '已與 Google 試算表同步');
     }
     async function apiPost(d) {
       const trip = d.tripId === undefined ? TRIP_ID : d.tripId;
@@ -744,16 +766,66 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       if (dataAbort) dataAbort.abort();
       Object.assign(appData, result.changes);
       delete appData._preview;
-      saveCache(TRIP_ID, appData);
+      saveCache(TRIP_ID, appData, {changed:true});
       // 回傳的只有受影響資料表，不能冒充完整快照的版本。
       localStorage.removeItem('ver_' + TRIP_ID);
       renderAll();
       setDataStatus('已儲存至 Google 試算表');
     }
+    let syncStatusMessage = '', offlineShellState = 'checking';
     function setDataStatus(message) {
+      syncStatusMessage = message;
+      renderSyncStatus();
+    }
+    function offlineInfo(trip = TRIP_ID || localStorage.getItem('defaultTripHint') || DEFAULT_TRIP) {
+      const cached = readCachedTrip(trip);
+      const dates = [...new Set((cached?.itinerary || []).map(i => i.Date).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d || '')))].sort();
+      return {trip, dates, preview:!!cached?._preview, syncedAt:cached?._offline?.syncedAt || '',
+        savedAt:cached?._offline?.savedAt || '', failed:cacheWriteFailures.has(trip)};
+    }
+    function formatSyncTime(value) {
+      const date = new Date(value);
+      return value && Number.isFinite(date.getTime()) ? date.toLocaleString('zh-TW', {timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}) : '尚無紀錄';
+    }
+    function renderSyncStatus() {
+      const info = offlineInfo();
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
       const el = document.getElementById('data-status');
-      el.textContent = message;
-      el.classList.toggle('hidden', !message);
+      const message = offline ? '目前離線 · 顯示這台裝置上的資料' : syncStatusMessage;
+      el.innerHTML = '<div class="status-line"><span>'+escHtml(message || '行程資料')+'</span><button onclick="openOfflineDetails()" aria-haspopup="dialog">離線資訊 ›</button></div>'+
+        '<p class="offline-meta">最後同步：'+escHtml(info.preview ? '文件預覽，未確認雲端版本' : formatSyncTime(info.syncedAt)+'（台灣時間）')+
+        (info.failed ? ' · 最新資料未能儲存到本機' : '')+'</p>';
+      el.classList.remove('hidden');
+    }
+    async function checkOfflineShell() {
+      offlineShellState = 'unavailable';
+      try {
+        if (typeof caches === 'undefined' || !navigator.serviceWorker) return;
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration?.active) return;
+        const home = new URL('index.html', registration.scope);
+        const root = new URL(registration.scope);
+        if (location.pathname !== home.pathname && location.pathname !== root.pathname) return;
+        if (!(await caches.keys()).includes('travel-shell-v9')) return;
+        const cache = await caches.open('travel-shell-v9');
+        if (await cache.match(home.href)) offlineShellState = 'ready';
+      } catch(e) { offlineShellState = 'unavailable'; }
+    }
+    async function openOfflineDetails() {
+      showTravelSheet('離線資訊', '<p class="share-help">正在檢查這台裝置已儲存的資料…</p>', 'offline');
+      const ticket = travelSheetEpoch, trip = TRIP_ID;
+      await checkOfflineShell();
+      if (ticket !== travelSheetEpoch || trip !== TRIP_ID || !document.getElementById('travel-sheet').open) return;
+      const info = offlineInfo();
+      const status = info.failed ? '最新資料未能存入本機，下列日期僅代表先前留下的資料。' :
+        info.preview ? '目前儲存的是文件預覽，尚未確認雲端版本。' : '以下日期已存入這台裝置。';
+      document.getElementById('travel-sheet-body').innerHTML = '<p class="brief-kicker">'+escHtml(CUR.name)+'</p>'+
+        '<div class="offline-section"><strong>最後完整同步</strong><p>'+escHtml(formatSyncTime(info.syncedAt))+'（台灣時間）</p>'+
+        (info.savedAt && info.savedAt !== info.syncedAt ? '<p class="brief-muted">最近本機資料更新：'+escHtml(formatSyncTime(info.savedAt))+'</p>' : '')+'</div>'+
+        '<div class="offline-section"><strong>可離線查看的日期</strong><p>'+status+'</p><div class="offline-dates">'+
+        (info.dates.length ? info.dates.map(date => '<span>'+escHtml(date)+'</span>').join('') : '<p>尚無已儲存的行程日期。請連網開啟這趟旅行，等待同步完成。</p>')+'</div></div>'+
+        '<p class="offline-section">'+(offlineShellState === 'ready' ? '✓ 頁面快取已備妥，可在離線時重新開啟首頁。' : '頁面快取尚未備妥或無法確認。請先連網重新開啟首頁；目前頁面仍可閱讀已載入內容。')+'</p>'+
+        '<p class="share-help">離線資料包含公開行程、住宿卡與公開航班資訊；私人帳務、參與者及訂位代號不會存入。地圖導航仍取決於外部地圖 App 的離線支援。清除瀏覽器資料後，需要重新連網儲存。</p>';
     }
     function updateImportUI() {
       document.getElementById('import-november').classList.toggle('hidden', !(TRIP_ID === 'osaka-shiga-kumamoto202611' && isEditMode && appData._preview));
@@ -866,6 +938,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
           if (!resp.resolvedTrip) { loadData(); return; }
         }
         if (resp.notModified && cached) {
+          saveCache(TRIP_ID, cached, {synced:true});
           setDataStatus('已與 Google 試算表同步'); tryRestoreAuth(); return;
         }
         const next = {itinerary:resp.itinerary||[], flights:resp.flights||[], checklist:resp.checklist||[], participants:resp.participants||[], expenses:resp.expenses||[]};
@@ -876,8 +949,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         } else {
           const unchanged = !isEditMode && renderedTrip === TRIP_ID && cached && !cached._preview && version && String(resp.version) === version;
           appData = next;
-          saveCache(TRIP_ID, appData);
-          if (resp.version != null && !isEditMode) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
+          const cachedSuccessfully = saveCache(TRIP_ID, appData, {synced:true});
+          if (cachedSuccessfully && resp.version != null && !isEditMode) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
           else localStorage.removeItem('ver_' + TRIP_ID);
           if (!unchanged) renderAll();
         }
@@ -898,6 +971,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       updateImportUI();
       renderItinerary(appData.itinerary); renderFlights(appData.flights); renderChecklist(appData.checklist); renderExpenseReport();
       renderTravelBriefs();
+      renderSyncStatus();
     }
 
     // ===== 旅途中快速查看：依時間推算，不代表實際抵達或完成 =====
@@ -1040,13 +1114,17 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       }).join('');
       if (visible.length) target.innerHTML = '<button class="stay-trigger" onclick="openTravelDetails(\'stay\')" aria-haspopup="dialog" aria-label="查看 '+escHtml(date)+' 住宿資訊">🏨 住宿</button>';
     }
-    let travelSheetScroll = '';
+    let travelSheetScroll = '', travelSheetEpoch = 0, travelSheetKind = '';
     function openTravelDetails(kind) {
       if (kind !== 'today' && kind !== 'stay') return;
       const content = document.getElementById(kind+'-details').innerHTML;
       if (!content) return;
+      showTravelSheet(kind === 'stay' ? '住宿資訊' : '今日／下一站', content, kind);
+    }
+    function showTravelSheet(title, content, kind) {
+      ++travelSheetEpoch; travelSheetKind = kind;
       const dialog = document.getElementById('travel-sheet');
-      document.getElementById('travel-sheet-title').textContent = kind === 'stay' ? '住宿資訊' : '今日／下一站';
+      document.getElementById('travel-sheet-title').textContent = title;
       document.getElementById('travel-sheet-body').innerHTML = content;
       if (!dialog.open) {
         travelSheetScroll = document.body.style.overflow;
@@ -1056,10 +1134,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       dialog.scrollTop = 0;
     }
     function closeTravelDetails() {
+      ++travelSheetEpoch;
       const dialog = document.getElementById('travel-sheet');
       if (dialog.open) dialog.close();
     }
     function finishTravelDetails() {
+      ++travelSheetEpoch; travelSheetKind = '';
+      clearShareImages();
       document.body.style.overflow = travelSheetScroll;
       document.getElementById('travel-sheet-body').innerHTML = '';
     }
@@ -1071,6 +1152,158 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     }
     function renderTravelBriefs() {
       renderTodayBrief(); renderStayBrief();
+      renderShareButton();
+    }
+
+    // 分享圖只取選定日期的公開行程欄位，不讀取備註、帳務或旅伴資料。
+    function shareDayModel(day = currentDay) {
+      const items = appData.itinerary.map(flightView).filter(i => i.Day === day);
+      const minutes = time => /^\d{1,2}:\d{2}$/.test(time || '') ? Number(time.split(':')[0])*60+Number(time.split(':')[1]) : Infinity;
+      items.sort((a,b) => minutes(a.Time) - minutes(b.Time));
+      return {tripId:TRIP_ID || DEFAULT_TRIP, title:CUR.name.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '').trim(),
+        day, date:items.find(i => i.Date)?.Date || '', preview:!!appData._preview,
+        rows:items.map(item => {
+          const flight = item.Type === 'plane' && appData.flights.find(f => f.ID === item.FlightID);
+          const end = item.Type === 'plane' ? flight?.ArriveTime || '' : getItemEndTime(item);
+          const nextDay = item.Type !== 'plane' && end && item.Time && minutes(end) < minutes(item.Time);
+          const arrivalDate = flight?.ArriveDate && flight.ArriveDate !== flight.DepartDate ? flight.ArriveDate+' ' : '';
+          const meta = item.Type === 'plane' ? '航班 · 起降為各機場當地時間'+(flight ? ' · '+flight.DepartAirport+' → '+flight.ArriveAirport : '') :
+            isTr(item.Type) ? gtc(item.Type).label+(item.Duration ? ' · 約 '+item.Duration+' 分鐘' : '') : '活動';
+          return {title:String(item.Activity || (isTr(item.Type) ? gtc(item.Type).label : '未命名行程')),
+            time:String(item.Time || '時間未定'), end:end ? '→ '+arrivalDate+end+(nextDay ? '（翌日）' : '') : '',
+            meta, transport:!!isTr(item.Type)};
+        })};
+    }
+    function renderShareButton() {
+      const available = appData.itinerary.some(i => i.Day === currentDay);
+      document.getElementById('share-brief').innerHTML = available ? '<button class="stay-trigger" onclick="openSharePreview()" aria-haspopup="dialog" aria-label="產生'+escHtml(currentDay)+'分享圖">↗ 分享</button>' : '';
+    }
+    function wrapShareText(context, text, width) {
+      const lines = [];
+      String(text).split('\n').forEach(paragraph => {
+        let line = '';
+        for (const char of Array.from(paragraph)) {
+          if (line && context.measureText(line+char).width > width) { lines.push(line); line = char; }
+          else line += char;
+        }
+        lines.push(line);
+      });
+      return lines;
+    }
+    function layoutSharePages(context, rows) {
+      const pages = []; let page = [], height = 0;
+      const font = '"Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif';
+      rows.forEach(row => {
+        context.font = '700 32px '+font;
+        const titleLines = wrapShareText(context, row.title, 726);
+        context.font = '23px '+font;
+        const metaLines = wrapShareText(context, row.meta, 726);
+        context.font = '22px '+font;
+        const endLines = row.end ? wrapShareText(context, row.end, 150) : [];
+        // 超長名稱可續到下一張圖，不裁切或遺漏文字。
+        const linesPerSegment = Math.max(1, Math.floor((1040-60-metaLines.length*32)/44));
+        for (let offset = 0; offset < titleLines.length; offset += linesPerSegment) {
+          const lines = titleLines.slice(offset, offset+linesPerSegment);
+          const rowHeight = Math.max(112, 46+lines.length*44+metaLines.length*32, 78+endLines.length*28);
+          if (page.length && (height+rowHeight > 1060 || page.length >= 8)) { pages.push({rows:page,height}); page=[]; height=0; }
+          page.push({...row, titleLines:lines, metaLines, endLines, continued:offset > 0, height:rowHeight}); height += rowHeight;
+        }
+      });
+      if (page.length) pages.push({rows:page,height});
+      return pages;
+    }
+    function drawSharePage(model, page, index, count) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('此瀏覽器無法產生圖片');
+      const font = '"Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif';
+      ctx.font = '600 28px '+font;
+      const headingLines = wrapShareText(ctx, model.title, 952);
+      const header = 202 + headingLines.length*38;
+      canvas.width = 1080; canvas.height = header + page.height + 142;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#b64b32'; ctx.fillRect(0,0,1080,12);
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#a44a32'; ctx.font = '700 21px '+font; ctx.fillText('DAILY PLAN  /  每日行程',64,45);
+      ctx.fillStyle = '#344054'; ctx.font = '600 28px '+font;
+      headingLines.forEach((line,i)=>ctx.fillText(line,64,86+i*38));
+      const headingY = 100+headingLines.length*38;
+      ctx.fillStyle = '#1d2939'; ctx.font = '700 48px '+font; ctx.fillText(model.date || model.day,64,headingY);
+      ctx.font = '26px '+font; ctx.fillStyle = '#667085';
+      ctx.fillText((model.date ? model.day+' · ' : '')+'行程日本時間／航班當地時間'+(model.preview ? ' · 文件預覽' : ''),64,headingY+62);
+      let y = header;
+      page.rows.forEach(row => {
+        if (row.transport) { ctx.fillStyle='#faf5ee'; ctx.fillRect(48,y+3,984,row.height-8); }
+        ctx.fillStyle = row.transport ? '#b64b32' : '#1d2939';
+        ctx.font = (row.time === '時間未定' ? '700 24px ' : '700 32px ')+font;
+        ctx.fillText(row.continued ? '續上頁' : row.time,64,y+20);
+        ctx.fillStyle = '#667085'; ctx.font = '22px '+font;
+        row.endLines.forEach((line,i)=>ctx.fillText(line,64,y+62+i*28));
+        ctx.fillStyle = '#1d2939'; ctx.font = '700 32px '+font;
+        row.titleLines.forEach((line,i)=>ctx.fillText(line,250,y+16+i*44));
+        ctx.fillStyle = row.transport ? '#9a4a34' : '#667085'; ctx.font = '23px '+font;
+        row.metaLines.forEach((line,i)=>ctx.fillText(line,250,y+26+row.titleLines.length*44+i*32));
+        y += row.height;
+        ctx.strokeStyle='#e4e7ec'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(64,y); ctx.lineTo(1016,y); ctx.stroke();
+      });
+      ctx.fillStyle='#667085'; ctx.font='22px '+font;
+      ctx.fillText('依目前規劃整理；時間與交通請以當天狀況為準。',64,y+32);
+      ctx.fillText('PersonalTravel',64,y+76);
+      ctx.textAlign='right'; ctx.fillText((index+1)+' / '+count,1016,y+76); ctx.textAlign='left';
+      return canvas;
+    }
+    let shareImages = [];
+    function clearShareImages() {
+      shareImages.forEach(item => URL.revokeObjectURL(item.url)); shareImages = [];
+    }
+    function shareImageFiles() {
+      return shareImages.map(item => new File([item.blob], item.name, {type:'image/png'}));
+    }
+    function canShareImages() {
+      try { return shareImages.length > 0 && typeof File !== 'undefined' && !!navigator.canShare?.({files:shareImageFiles()}); }
+      catch(e) { return false; }
+    }
+    async function openSharePreview() {
+      const model = shareDayModel();
+      if (!model.rows.length) { showToast('此日期尚無行程可分享', true); return; }
+      clearShareImages();
+      showTravelSheet('每日分享圖 · '+model.day, '<p class="share-help" role="status">正在整理圖片…</p>', 'share');
+      const ticket = travelSheetEpoch;
+      const current = () => ticket === travelSheetEpoch && document.getElementById('travel-sheet').open;
+      try {
+        if (document.fonts) await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve,1500))]);
+        if (!current()) return;
+        const measure = document.createElement('canvas').getContext('2d');
+        if (!measure) throw new Error('此瀏覽器無法產生圖片');
+        const pages = layoutSharePages(measure, model.rows);
+        for (let index=0; index<pages.length; index++) {
+          if (!current()) return;
+          const canvas = drawSharePage(model,pages[index],index,pages.length);
+          const blob = await new Promise((resolve,reject) => canvas.toBlob(result => result ? resolve(result) : reject(new Error('圖片輸出失敗')), 'image/png'));
+          if (!current()) return;
+          const name = 'travel-'+model.tripId.replace(/[^a-z0-9-]/gi,'')+'-'+(model.date || 'day')+'-'+(index+1)+'.png';
+          shareImages.push({blob,name,url:URL.createObjectURL(blob)});
+        }
+        const nativeShare = canShareImages();
+        document.getElementById('travel-sheet-body').innerHTML = '<p class="share-help">'+escHtml(model.date || model.day)+' · 共 '+shareImages.length+' 張。圖片包含時間、行程名稱與交通方式，不含備註、帳務、旅伴或訂位代號。</p>'+
+          (nativeShare ? '<div class="brief-actions"><button onclick="shareDayImages()">分享這一天的圖片 ↗</button></div>' : '<p class="share-help">可逐張下載，再傳到 LINE 或其他 App。</p>')+
+          '<p id="share-feedback" class="share-feedback" role="status"></p><div class="share-pages">'+shareImages.map((item,index)=>
+          '<figure class="share-page"><img src="'+item.url+'" alt="'+escHtml(model.day)+'行程分享圖，第 '+(index+1)+' 張"><figcaption>第 '+(index+1)+'／'+shareImages.length+' 張<a class="share-download" href="'+item.url+'" download="'+item.name+'">下載 PNG</a></figcaption></figure>').join('')+'</div>';
+      } catch(e) {
+        if (!current()) return;
+        clearShareImages();
+        document.getElementById('travel-sheet-body').innerHTML = '<p class="share-help">圖片未能產生，請稍後再試。</p><div class="brief-actions"><button onclick="openSharePreview()">重新產生</button></div>';
+      }
+    }
+    async function shareDayImages() {
+      if (!canShareImages()) return;
+      const ticket = travelSheetEpoch;
+      try {
+        await navigator.share({files:shareImageFiles()});
+        if (ticket === travelSheetEpoch) document.getElementById('share-feedback').textContent = '已交由裝置的分享功能處理。';
+      } catch(e) {
+        if (ticket === travelSheetEpoch) document.getElementById('share-feedback').textContent = e.name === 'AbortError' ? '已取消分享，仍可下載圖片。' : '此裝置未能分享圖片，請改用下方下載。';
+      }
     }
 
     function scrollDays(direction) {
