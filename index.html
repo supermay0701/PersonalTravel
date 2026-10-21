@@ -6,7 +6,7 @@
   <title>⚾ 旅遊行程</title>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0d1f3c">
+  <meta name="theme-color" content="#352018">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <meta name="mobile-web-app-capable" content="yes">
@@ -28,17 +28,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* 預設主題（tokyo2026）；applyTheme() 會在載入時依旅行覆蓋這些變數 */
-      --bg-grad: linear-gradient(180deg, #0d1f3c 0%, #132d54 45%, #1a4a28 100%);
-      --score-grad: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 60%, #0d1f3c 100%);
+      /* 與 DEFAULT_TRIP 一致，避免首次繪製先閃過其他旅行的色系。 */
+      --bg-grad: linear-gradient(180deg, #291c20 0%, #503023 48%, #24382d 100%);
+      --score-grad: linear-gradient(135deg, #211821 0%, #42251c 100%);
       --stripe: 255,255,255;
-      --accent: #c8a800; --accent-rgb: 200,168,0;
-      --led: #ffd700; --led-rgb: 255,215,0;
-      --primary: #c8102e; --primary-rgb: 200,16,46; --primary-border: #ff5050;
-      --c-primary-400: 248 113 113;
-      --c-primary-600: 220 38 38;
-      --c-primary-700: 185 28 28;
-      --c-primary-900: 127 29 29;
+      --accent: #e7b75c; --accent-rgb: 231,183,92;
+      --led: #ffcd7d; --led-rgb: 255,205,125;
+      --primary: #b64b32; --primary-rgb: 182,75,50; --primary-border: #eea074;
+      --c-primary-400: 251 146 60;
+      --c-primary-600: 194 65 12;
+      --c-primary-700: 154 52 18;
+      --c-primary-900: 124 45 18;
     }
     * { box-sizing: border-box; }
     body {
@@ -133,7 +133,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 .travel-sheet{position:fixed;inset:auto 0 0;margin:0 auto;width:min(100%,620px);max-width:100%;height:92dvh;max-height:92dvh;border:1px solid #ffffff30;border-bottom:0;border-radius:20px 20px 0 0;background:#211d22;color:#fff;padding:0;overscroll-behavior:contain;box-shadow:0 -12px 50px #0006}.travel-sheet::backdrop{background:#0009}.sheet-header{position:sticky;top:0;background:#211d22;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid #ffffff20}.sheet-header h2{font-size:16px;font-weight:700}.sheet-close{min-width:44px;min-height:44px;border:1px solid #ffffff30;border-radius:10px;color:white;background:transparent;cursor:pointer}.sheet-body{padding:18px 18px max(20px,env(safe-area-inset-bottom));overflow-wrap:anywhere}.sheet-body .travel-brief{padding:0;background:none;border:0;margin:0}.sheet-body .brief-row:first-child{margin-top:0;padding-top:0;border:0}
 @media(max-width:600px){.travel-brief{padding:14px}.brief-title{font-size:17px}}
 @media(max-width:600px){.timeline .activity-title{font-size:16px}.timeline .activity-note{font-size:12px}.timeline .transport-summary h3{font-size:14px}}
-.status-line{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.status-line button{color:var(--led);font-size:12px;min-height:36px;white-space:nowrap}.offline-meta{font-size:11px;color:#c4c6cb;margin-top:3px}.offline-dates{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.offline-dates span{border:1px solid #ffffff30;border-radius:8px;padding:6px 10px;font-size:13px}.offline-section{margin:16px 0;line-height:1.8;font-size:14px}.offline-section strong{color:var(--led)}
+.connection-status{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:6px 10px;border:1px solid #ffffff25;border-radius:999px;background:#ffffff08;color:#e5e7eb;font-size:12px;white-space:nowrap;cursor:pointer}.connection-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e40}.connection-status.is-offline .connection-dot{background:#f87171;box-shadow:0 0 8px #f8717140}.offline-dates{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.offline-dates span{border:1px solid #ffffff30;border-radius:8px;padding:6px 10px;font-size:13px}.offline-section{margin:16px 0;line-height:1.8;font-size:14px}.offline-section strong{color:var(--led)}
+.main-nav{display:flex;justify-content:center;gap:8px;margin-bottom:20px}.main-nav .main-tab{min-width:0;flex:1;max-width:110px;padding-left:6px;padding-right:6px}
 .day-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin:18px 0 8px}.day-actions .stay-trigger{min-width:112px;min-height:44px}.share-pages{display:grid;gap:16px;margin-top:16px}.share-page{margin:0}.share-page img{display:block;width:100%;height:auto;border-radius:8px;background:#fff}.share-page figcaption{margin-top:8px;font-size:12px;color:#c4c6cb}.share-download{display:inline-block;color:var(--led);text-decoration:underline;margin-left:12px;padding:8px 0}.share-help{font-size:12px;line-height:1.8;color:#c4c6cb}.share-feedback{font-size:13px;color:var(--led);margin:12px 0}
 @media(prefers-reduced-motion:reduce){.transport-card .chevron{transition:none}}
   </style>
@@ -143,7 +144,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     <div class="scoreboard p-3 md:p-5 mb-5">
       <div class="flex items-center justify-between gap-2 mb-2">
         <select id="trip-select" onchange="switchTrip(this.value)" title="切換旅行" class="text-white text-xs font-bold rounded-lg px-2 py-1.5 border border-white/20 outline-none cursor-pointer max-w-[60%] transition"></select>
-        <button id="lock-btn" onclick="toggleEditMode()" class="text-xl opacity-60 hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0" title="進入編輯模式">🔒</button>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button id="data-status" class="connection-status" onclick="openOfflineDetails()" aria-haspopup="dialog" aria-controls="travel-sheet" aria-label="連線與同步資訊"><span class="connection-dot" aria-hidden="true"></span><span id="connection-label">連線</span></button>
+          <button id="lock-btn" onclick="toggleEditMode()" class="text-xl opacity-60 hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0" title="進入編輯模式">🔒</button>
+        </div>
       </div>
       <div class="text-center">
         <div id="hdr-led" class="led-text text-[11px] md:text-sm font-bold tracking-widest">⚾ BASEBALL TRIP ⚾</div>
@@ -152,18 +156,20 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         <div id="hdr-divider" class="stitch-divider mt-2 md:mt-3 text-xs">⚾ 行程表 SCHEDULE ⚾</div>
       </div>
     </div>
-    <div class="flex justify-center gap-2 mb-5">
+    <div class="main-nav">
       <button class="main-tab active" data-section="itinerary" onclick="switchSection('itinerary')"><span class="mt-icon">📅</span><span class="mt-label">行程</span></button>
       <button class="main-tab" data-section="flights" onclick="switchSection('flights')"><span class="mt-icon">✈️</span><span class="mt-label">航班</span></button>
+      <button id="trip-info-tab" class="main-tab hidden" data-section="info" onclick="switchSection('info')"><span class="mt-icon">📋</span><span class="mt-label">行程說明</span></button>
       <button class="main-tab" data-section="checklist" onclick="switchSection('checklist')"><span class="mt-icon">✅</span><span class="mt-label">確認清單</span></button>
       <button class="main-tab" data-section="expenses" onclick="switchSection('expenses')"><span class="mt-icon">💰</span><span class="mt-label">帳務</span></button>
     </div>
     <div id="edit-indicator" class="hidden bg-green-600 text-white text-center text-xs py-1.5 font-bold rounded-lg mb-5 tracking-wide">✏️ 編輯模式已啟用 — 點擊 🔓 可退出</div>
     <button id="default-trip-btn" onclick="setCurrentDefaultTrip()" class="hidden mb-4 px-4 py-2 border border-white/30 rounded-lg text-white text-sm font-bold disabled:opacity-50">將目前旅行設為首頁預設</button>
-    <div id="data-status" role="status" class="text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4 hidden"></div>
-    <div id="november-info" class="hidden text-white text-sm rounded-lg bg-black/30 px-4 py-3 mb-4">
+    <div id="section-info" class="app-section hidden">
+    <div id="november-info" class="text-white text-sm rounded-lg bg-black/30 px-4 py-4 mb-4 leading-relaxed">
+      <h2 class="font-bold text-lg mb-3" style="color:var(--led)">⚾ 賽事報到提醒</h2>
       <p>⚾ 11/03 皇子山 09:00 報到 · 11/09 藤崎台 08:30 報到（08:10～08:20 到場）</p>
-      <details class="mt-2"><summary class="cursor-pointer">行程說明與交通查核</summary>
+      <div class="mt-4"><h2 class="font-bold text-lg" style="color:var(--led)">行程說明與交通查核</h2>
         <p class="mt-2">行程採日本時間，航班採各機場當地時間。航班已依提供資訊確認；其餘交通時間為估算，訂位狀態見各項安排。</p>
         <p class="mt-2">球棒袋屬運動用品，JR 有免強制預約例外；使用最後排後方特大行李空間仍需預約對應座位。市電與產交巴士付款方式不同。</p>
         <p class="mt-2">HARUKA 優惠票先確認大阪區間、QR／換票方式，出關後再選班次。11/4 新快速 11:34→12:08 為規劃班次；11/10 巴士採 11/1 改正平日班表，出發前再確認。</p>
@@ -174,8 +180,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
           <a href="https://www.superhotel.co.jp/s_hotels/otsu/" target="_blank" rel="noopener">大津住宿</a>
           <a href="https://hotelsova.co.jp/namikizaka/" target="_blank" rel="noopener">SOVA 並木坂</a>
         </div>
-      </details>
+      </div>
       <button id="import-november" onclick="importNovember()" class="hidden mt-3 px-4 py-2 bg-primary-600 rounded-lg font-bold">將 11 月行程匯入 Google 試算表</button>
+    </div>
     </div>
     <div id="section-itinerary" class="app-section">
       <div class="day-tools">
@@ -621,7 +628,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 
     let isEditMode = false, cachedApiKey = null;
     let appData = { itinerary: [], flights: [], checklist: [], participants: [], expenses: [] };
-    window.onload = init;
+    // DOM 備妥即套用主題與本機資料，不等圖片、字型全部載完。
+    document.addEventListener('DOMContentLoaded', init, {once:true});
 
     // ===== 主題 / 旅行切換 =====
     function applyTheme(t) {
@@ -657,7 +665,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     function applyTrip(t) {
       CUR = TRIPS[t] || TRIPS[DEFAULT_TRIP];
       applyTheme(t); applyTexts(t);
-      document.getElementById('november-info').classList.toggle('hidden', t !== 'osaka-shiga-kumamoto202611');
+      const hasInfo = t === 'osaka-shiga-kumamoto202611';
+      document.getElementById('trip-info-tab').classList.toggle('hidden', !hasInfo);
+      if (!hasInfo && !document.getElementById('section-info').classList.contains('hidden')) switchSection('itinerary');
       const sel = document.getElementById('trip-select');
       if (sel && TRIPS[t]) sel.value = t;
     }
@@ -692,11 +702,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       window.addEventListener('online', renderSyncStatus);
       checkOfflineShell();
       if ('serviceWorker' in navigator) {
-        // 新版 service worker 接管時自動重新載入一次，避免卡在舊版頁面
-        let swReloaded = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (swReloaded) return; swReloaded = true; location.reload();
-        });
+        // 導覽本來就優先抓最新頁面；快取接管只更新狀態，不打斷閱讀。
+        navigator.serviceWorker.addEventListener('controllerchange', checkOfflineShell);
         navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(checkOfflineShell).catch(()=>{});
       }
     }
@@ -788,14 +795,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       return value && Number.isFinite(date.getTime()) ? date.toLocaleString('zh-TW', {timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}) : '尚無紀錄';
     }
     function renderSyncStatus() {
-      const info = offlineInfo();
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
       const el = document.getElementById('data-status');
-      const message = offline ? '目前離線 · 顯示這台裝置上的資料' : syncStatusMessage;
-      el.innerHTML = '<div class="status-line"><span>'+escHtml(message || '行程資料')+'</span><button onclick="openOfflineDetails()" aria-haspopup="dialog">離線資訊 ›</button></div>'+
-        '<p class="offline-meta">最後同步：'+escHtml(info.preview ? '文件預覽，未確認雲端版本' : formatSyncTime(info.syncedAt)+'（台灣時間）')+
-        (info.failed ? ' · 最新資料未能儲存到本機' : '')+'</p>';
-      el.classList.remove('hidden');
+      el.classList.toggle('is-offline', offline);
+      document.getElementById('connection-label').textContent = offline ? '離線' : '連線';
+      el.setAttribute('aria-label', (offline ? '目前離線' : '目前連線') + '，查看連線與同步資訊');
+      el.title = (offline ? '目前離線 · 顯示這台裝置上的資料' : syncStatusMessage || '目前連線') + ' · 點開查看詳情';
+      if (document.getElementById('travel-sheet').open && travelSheetKind === 'offline') renderOfflineDetails();
     }
     async function checkOfflineShell() {
       offlineShellState = 'unavailable';
@@ -806,20 +812,25 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
         const home = new URL('index.html', registration.scope);
         const root = new URL(registration.scope);
         if (location.pathname !== home.pathname && location.pathname !== root.pathname) return;
-        if (!(await caches.keys()).includes('travel-shell-v9')) return;
-        const cache = await caches.open('travel-shell-v9');
+        if (!(await caches.keys()).includes('travel-shell-v10')) return;
+        const cache = await caches.open('travel-shell-v10');
         if (await cache.match(home.href)) offlineShellState = 'ready';
       } catch(e) { offlineShellState = 'unavailable'; }
     }
     async function openOfflineDetails() {
-      showTravelSheet('離線資訊', '<p class="share-help">正在檢查這台裝置已儲存的資料…</p>', 'offline');
+      showTravelSheet('連線與同步資訊', '<p class="share-help">正在檢查這台裝置已儲存的資料…</p>', 'offline');
       const ticket = travelSheetEpoch, trip = TRIP_ID;
       await checkOfflineShell();
       if (ticket !== travelSheetEpoch || trip !== TRIP_ID || !document.getElementById('travel-sheet').open) return;
+      renderOfflineDetails();
+    }
+    function renderOfflineDetails() {
       const info = offlineInfo();
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
       const status = info.failed ? '最新資料未能存入本機，下列日期僅代表先前留下的資料。' :
         info.preview ? '目前儲存的是文件預覽，尚未確認雲端版本。' : '以下日期已存入這台裝置。';
       document.getElementById('travel-sheet-body').innerHTML = '<p class="brief-kicker">'+escHtml(CUR.name)+'</p>'+
+        '<div class="offline-section"><strong>'+(offline ? '🔴 目前離線' : '🟢 目前連線')+'</strong><p>'+escHtml(offline ? '目前顯示這台裝置上的資料。' : syncStatusMessage || '正在確認同步狀態…')+'</p></div>'+
         '<div class="offline-section"><strong>最後完整同步</strong><p>'+escHtml(formatSyncTime(info.syncedAt))+'（台灣時間）</p>'+
         (info.savedAt && info.savedAt !== info.syncedAt ? '<p class="brief-muted">最近本機資料更新：'+escHtml(formatSyncTime(info.savedAt))+'</p>' : '')+'</div>'+
         '<div class="offline-section"><strong>可離線查看的日期</strong><p>'+status+'</p><div class="offline-dates">'+
@@ -947,7 +958,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
           appData = {...getNovemberTripSeed(), _preview:true};
           localStorage.removeItem('ver_' + TRIP_ID);
         } else {
-          const unchanged = !isEditMode && renderedTrip === TRIP_ID && cached && !cached._preview && version && String(resp.version) === version;
+          // 雲端版本也會隨時間更新；內容相同就保留現有卡片與展開狀態。
+          const unchanged = !isEditMode && renderedTrip === TRIP_ID && cached && !cached._preview &&
+            ['itinerary','flights','checklist','participants','expenses'].every(table => JSON.stringify(cached[table] || []) === JSON.stringify(next[table]));
           appData = next;
           const cachedSuccessfully = saveCache(TRIP_ID, appData, {synced:true});
           if (cachedSuccessfully && resp.version != null && !isEditMode) localStorage.setItem('ver_' + TRIP_ID, String(resp.version));
@@ -1814,7 +1827,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
     function switchSection(s) {
       closeTravelDetails();
       document.querySelectorAll('.main-tab').forEach(t=>t.classList.toggle('active',t.dataset.section===s));
-      ['itinerary','flights','checklist','expenses'].forEach(x=>document.getElementById('section-'+x).classList.toggle('hidden',x!==s));
+      ['itinerary','flights','info','checklist','expenses'].forEach(x=>document.getElementById('section-'+x).classList.toggle('hidden',x!==s));
       if (s === 'itinerary') scheduleTravelLayout();
     }
     function switchDay(d) {

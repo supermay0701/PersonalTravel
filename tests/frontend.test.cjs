@@ -6,13 +6,16 @@ const vm = require('node:vm');
 function frontend(search = '?trip=osaka-shiga-kumamoto202611', initialStorage = []) {
   const storage = new Map(initialStorage), requests = [], elements = new Map();
   const element = id => {
-    if (!elements.has(id)) elements.set(id,{textContent:'',classList:{toggle(){},add(){},remove(){}},style:{setProperty(){}},setAttribute(){}});
+    if (!elements.has(id)) {
+      const classes = new Set(['hidden']), attributes = new Map();
+      elements.set(id,{textContent:'',classList:{toggle(name,on){if(on ?? !classes.has(name))classes.add(name);else classes.delete(name);},add(name){classes.add(name);},remove(name){classes.delete(name);},contains:name=>classes.has(name)},style:{setProperty(){}},setAttribute:(name,value)=>attributes.set(name,value),getAttribute:name=>attributes.get(name)});
+    }
     return elements.get(id);
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
     window:{location:{search}},
-    document:{getElementById:element,documentElement:{style:{setProperty(){}}},querySelector:()=>null,
+    document:{addEventListener(){},getElementById:element,documentElement:{style:{setProperty(){}}},querySelector:()=>null,
       createElement:tag=>({tagName:tag,children:[],dataset:{},style:{setProperty(){}},setAttribute(){},appendChild(child){this.children.push(child);}})},
     localStorage:{get length(){return storage.size;},key:i=>[...storage.keys()][i],getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
     fetch:(url, options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve:body=>resolve({ok:true,json:async()=>body}),reject}))
@@ -57,7 +60,12 @@ test('版本未變仍更新最後確認時間，失敗請求不更新時間',asy
   const failed=f.run('loadData()'); f.requests[1].reject(new Error('offline'));await failed;
   assert.equal(f.run('offlineInfo().syncedAt'),timestamp);
   f.context.navigator={onLine:false}; f.run('renderSyncStatus()');
-  assert.match(f.elements.get('data-status').innerHTML,/目前離線/);
+  assert.equal(f.elements.get('connection-label').textContent,'離線');
+  assert.equal(f.elements.get('data-status').classList.contains('is-offline'),true);
+  assert.match(f.elements.get('data-status').getAttribute('aria-label'),/目前離線/);
+  f.context.navigator.onLine=true; f.run('renderSyncStatus()');
+  assert.equal(f.elements.get('connection-label').textContent,'連線');
+  assert.equal(f.elements.get('data-status').classList.contains('is-offline'),false);
 });
 
 test('儲存失敗保留舊快取範圍與時間，也不保留新版本號',async()=>{
@@ -81,7 +89,7 @@ test('離線頁面備妥狀態必須有目前版本首頁快取，預覽路徑�
   f.context.location={pathname:'/travel/index.html'};
   f.context.caches={keys:async()=>['travel-shell-v8'],open:async()=>({match:async()=>({})})};
   await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'unavailable');
-  f.context.caches.keys=async()=>['travel-shell-v9'];
+  f.context.caches.keys=async()=>['travel-shell-v10'];
   await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'ready');
   f.context.location.pathname='/travel/.tmp/preview.html';
   await f.run('checkOfflineShell()');assert.equal(f.run('offlineShellState'),'unavailable');
@@ -307,6 +315,57 @@ test('有完整快取才傳條件版本；未變更回應保留內容',async()=>
   const pending=f.run('loadData()'); assert.match(f.requests[0].url,/version=v1/);
   f.requests[0].resolve({status:'success',notModified:true,version:'v1'}); await pending;
   assert.equal(f.run('appData.itinerary[0].ID'),'cached');
+});
+
+test('版本輪替但內容相同不重畫，真正內容更新才重畫',async()=>{
+  const f=frontend(), trip='osaka-shiga-kumamoto202611';
+  f.storage.set('cache_'+trip,JSON.stringify(payload('cached')));f.storage.set('ver_'+trip,'v1');
+  f.run('globalThis.renders=0;renderAll=()=>{renders++;}');
+  const same=f.run('loadData()');
+  assert.equal(f.run('renders'),1);
+  f.requests[0].resolve({...payload('cached'),version:'v2'});await same;
+  assert.equal(f.run('renders'),1);
+  assert.equal(f.storage.get('ver_'+trip),'v2');
+  const changed=f.run('loadData()');
+  f.requests[1].resolve({...payload('changed'),version:'v3'});await changed;
+  assert.equal(f.run('renders'),3);
+  assert.equal(f.run('appData.itinerary[0].Activity'),'changed');
+});
+
+test('離線快取首次接管或更新只檢查快取，不強制重新整理頁面',async()=>{
+  const f=frontend(), handlers={};let reloads=0, checks=0;
+  f.context.setInterval=()=>{};
+  f.context.window.addEventListener=()=>{};
+  f.context.location={reload(){reloads++;}};
+  f.context.navigator={serviceWorker:{addEventListener:(name,fn)=>handlers[name]=fn,register:async()=>({}),ready:Promise.resolve({})}};
+  f.context.checkShell=()=>{checks++;};
+  f.run('loadData=()=>{};checkOfflineShell=checkShell;init()');
+  await Promise.resolve();await Promise.resolve();
+  const before=checks;
+  handlers.controllerchange();handlers.controllerchange();
+  assert.equal(reloads,0);
+  assert.equal(checks,before+2);
+});
+
+test('離線詳情顯示同步狀態與時間；開啟時連線變化會更新詳情',()=>{
+  const f=frontend(); f.context.navigator={onLine:true};
+  f.run("saveCache(TRIP_ID,getNovemberTripSeed(),{synced:true});travelSheetKind='offline';document.getElementById('travel-sheet').open=true;setDataStatus('已與 Google 試算表同步')");
+  assert.match(f.elements.get('travel-sheet-body').innerHTML,/已與 Google 試算表同步/);
+  assert.match(f.elements.get('travel-sheet-body').innerHTML,/最後完整同步/);
+  f.context.navigator.onLine=false;f.run('renderSyncStatus()');
+  assert.match(f.elements.get('travel-sheet-body').innerHTML,/目前離線/);
+});
+
+test('行程說明分頁可切換，其他旅行不顯示十一月說明',()=>{
+  const f=frontend();f.context.document.querySelectorAll=()=>[];
+  f.run('scheduleTravelLayout=()=>{};applyTrip(DEFAULT_TRIP);switchSection("info")');
+  assert.equal(f.elements.get('trip-info-tab').classList.contains('hidden'),false);
+  assert.equal(f.elements.get('section-info').classList.contains('hidden'),false);
+  assert.equal(f.elements.get('section-itinerary').classList.contains('hidden'),true);
+  f.run('applyTrip("tokyo2026")');
+  assert.equal(f.elements.get('trip-info-tab').classList.contains('hidden'),true);
+  assert.equal(f.elements.get('section-info').classList.contains('hidden'),true);
+  assert.equal(f.elements.get('section-itinerary').classList.contains('hidden'),false);
 });
 
 test('文件預覽無法透過一般編輯寫入雲端',async()=>{
