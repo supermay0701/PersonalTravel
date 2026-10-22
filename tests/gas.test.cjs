@@ -109,10 +109,10 @@ test('更新前若缺少航班或 ID 衝突，所有資料保持原樣',()=>{
 
 test('交通修訂採先晚餐再入住，轉乘與機場巴士時間銜接正確',()=>{
   const {seed}=harness(), row=id=>seed.itinerary.find(r=>r.ID===id);
-  assert.equal(row('nov26-d1-06').Time,'20:20');
-  assert.equal(row('nov26-d1-07').Time,'20:40');
-  assert.equal(row('nov26-d1-04').Time,'21:40');
-  assert.equal(row('nov26-d1-05').Time,'22:00');
+  assert.equal(row('nov26-d1-06').Time,'20:31');
+  assert.equal(row('nov26-d1-07').Time,'21:00');
+  assert.equal(row('nov26-d1-04').Time,'22:00');
+  assert.equal(row('nov26-d1-05').Time,'22:20');
   assert.equal(row('nov26-d1-08').Type,'activity');
   assert.equal(row('nov26-d4-02').Time,'11:34');
   assert.equal(row('nov26-d4-02').Duration,'34');
@@ -135,7 +135,7 @@ test('交通修訂限定指定 ID，保留航班、其他註解、費用與勾�
   const flights=JSON.stringify(h.sheets.get('FlightInfo').rows);
   const count=h.context.refreshNovemberTransportPlan_(h.ss);
   assert.equal(count.Itinerary,1); assert.equal(count.Checklist,1);
-  assert.equal(dinner[2],'20:40'); assert.equal(dinner[8],'1000'); assert.equal(dinner[13],'旅伴');
+  assert.equal(dinner[2],'21:00'); assert.equal(dinner[8],'1000'); assert.equal(dinner[13],'旅伴');
   assert.equal(unrelated[7],'自訂早餐提醒'); assert.equal(h.sheets.get('Checklist').rows[24][2],'TRUE');
   assert.equal(JSON.stringify(h.sheets.get('FlightInfo').rows),flights);
   const writes=h.metrics.writes; h.context.refreshNovemberTransportPlan_(h.ss); assert.equal(h.metrics.writes,writes);
