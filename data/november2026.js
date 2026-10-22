@@ -39,7 +39,7 @@ function getNovemberTripSeed() {
   add(2, '15:35', 25, 'activity', '三尾神社參拜', '接著前往大津港，移動方式依體力調整；時間暫估。', '', {ID:'nov26-d2-mio', MapURL:'https://maps.app.goo.gl/sNUJgxmcCWfU9xsk9'});
   add(2, '16:15', 30, 'activity', '大津港散步', '若提早結束，先回飯店入住、休息，再去吃晚餐；時間暫估。', '大津港', {ID:'nov26-d2-port'});
   add(2, '17:00', 45, 'activity', 'Super Hotel 入住、休息（彈性）', '11/02～11/04 共 2 晚住宿已訂。若太早回來就先回飯店等；依晚餐餐廳位置預留移動時間，目標 18:15 到店。', otsu, {ID:'nov26-d2-06'});
-  add(2, '18:15', 90, 'activity', '晚餐｜滋賀大津ふぐ料理（待預約）', '預計預約 18:15，尚未訂位；實際用餐時間依訂位結果調整。', '', {ID:'nov26-d2-07', MapURL:'https://maps.app.goo.gl/V4gS8JofAnML2Eax7'});
+  add(2, '18:15', 90, 'activity', '晚餐｜滋賀大津ふぐ料理（已預約）', '已預約 11/2 18:15。用餐暫抓 90 分鐘，結束時間依實際用餐調整；餐後前往 Fresco 大津店採買。', '', {ID:'nov26-d2-07', MapURL:'https://maps.app.goo.gl/V4gS8JofAnML2Eax7'});
   add(2, '20:00', 30, 'activity', 'Fresco 超市 大津店｜採買', '晚餐後買宵夜、點心與隔天測試的午餐；時間暫估，營業時間出發前確認。', '', {ID:'nov26-d2-fresco', MapURL:'https://maps.app.goo.gl/ekD67YEQs8cByLm8A'});
   add(2, '20:45', 30, 'activity', '回飯店、整理考試用品、早睡', '備妥證件、球具、飲水與午餐，確認隔天叫車；時間暫估。', otsu, {ID:'nov26-d2-rest'});
   add(3, '07:30', 30, 'activity', '早餐與考前準備', '早餐後確認證件與考試通知。', otsu);

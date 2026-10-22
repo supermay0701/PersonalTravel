@@ -339,7 +339,7 @@ test('大津修訂保留原 ID、帳務與其他行程，新增項目可重跑�
   assert.equal(JSON.stringify(['Expense','FlightInfo','Checklist','Config'].map(n=>h.sheets.get(n).rows)),others);
   const writes=h.metrics.writes;h.context.refreshNovemberOtsuPlan_(h.ss);assert.equal(h.metrics.writes,writes);
   const day=h.seed.itinerary.filter(r=>r.Day==='第2天').sort((a,b)=>a.Time.localeCompare(b.Time));
-  const order=['天孫神社參拜','午餐｜松本食堂','島ノ関駅 → 大津市役所前站｜京阪電車','確認皇子山入口、輕度伸展','琵琶湖疏水散步','三尾神社參拜','大津港散步','晚餐｜滋賀大津ふぐ料理（待預約）','Fresco 超市 大津店｜採買'];
+  const order=['天孫神社參拜','午餐｜松本食堂','島ノ関駅 → 大津市役所前站｜京阪電車','確認皇子山入口、輕度伸展','琵琶湖疏水散步','三尾神社參拜','大津港散步','晚餐｜滋賀大津ふぐ料理（已預約）','Fresco 超市 大津店｜採買'];
   assert.deepEqual(Array.from(day.filter(r=>order.includes(r.Activity)),r=>r.Activity),order);
   assert.equal(day.find(r=>r.ID==='nov26-d2-07').Time,'18:15');
   assert.match(h.seed.itinerary.find(r=>r.ID==='nov26-d3-07').Note,/如果不順就吃飯店附近/);
