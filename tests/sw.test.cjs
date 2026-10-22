@@ -10,7 +10,7 @@ function worker() {
   stored.set(home,new Response('cached home'));
   const context=vm.createContext({URL,
     self:{location:{href:'https://example.test/PersonalTravel/sw.js'},addEventListener:(name,fn)=>handlers[name]=fn,clients:{claim:async()=>{}}},
-    caches:{open:async()=>({put:async(k,v)=>stored.set(k,v),match:async k=>stored.get(k)}),keys:async()=>['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12','travel-shell-v13','unrelated-app'],delete:async k=>deleted.push(k)},
+    caches:{open:async()=>({put:async(k,v)=>stored.set(k,v),match:async k=>stored.get(k)}),keys:async()=>['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12','travel-shell-v13','travel-shell-v14','travel-shell-v15','unrelated-app'],delete:async k=>deleted.push(k)},
     fetch:async()=>{if(response instanceof Error) throw response; return response;}
   });
   vm.runInContext(fs.readFileSync('sw.js','utf8'),context);
@@ -50,5 +50,5 @@ test('HTTP 錯誤、非 HTML 及重新導向不覆蓋離線首頁',async()=>{
 
 test('啟用新版只清除本應用程式的舊快取',async()=>{
   const w=worker(); await w.activate();
-  assert.deepEqual(w.deleted,['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12','travel-shell-v13']);
+  assert.deepEqual(w.deleted,['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12','travel-shell-v13','travel-shell-v14']);
 });

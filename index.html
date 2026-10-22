@@ -1627,7 +1627,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       const activity = item.Activity || '';
       if (item.Type === 'train' && /HARUKA/i.test(activity)) {
         info.service = '關空特急 HARUKA';
-        info.links = [['HARUKA 票券','https://www.westjr.co.jp/travel-information/en/tickets-passes/oneway/haruka/']];
+        info.links = [['WEST QR 登入／票券','https://guest-ui.west-qr.com/#/packages/login/index'],['HARUKA 票券','https://www.westjr.co.jp/travel-information/en/tickets-passes/oneway/haruka/']];
       } else if (item.Type === 'train' && /さくら|新幹線/.test(activity)) {
         info.service = activity.includes('｜') ? activity.split('｜').slice(1).join('｜') : '新幹線';
         info.links = [['SmartEX','https://smart-ex.jp/'],['JR 行李規則','https://railway.jr-central.co.jp/oversized-baggage/']];
