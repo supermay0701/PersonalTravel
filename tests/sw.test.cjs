@@ -50,5 +50,5 @@ test('HTTP 錯誤、非 HTML 及重新導向不覆蓋離線首頁',async()=>{
 
 test('啟用新版只清除本應用程式的舊快取',async()=>{
   const w=worker(); await w.activate();
-  assert.deepEqual(w.deleted,['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12']);
+  assert.deepEqual(w.deleted,['travel-shell-v4','travel-shell-v5','travel-shell-v6','travel-shell-v7','travel-shell-v8','travel-shell-v9','travel-shell-v10','travel-shell-v11','travel-shell-v12','travel-shell-v13']);
 });
