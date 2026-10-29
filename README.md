@@ -2,6 +2,13 @@
 
 沿用單一 `index.html`、Google Apps Script 與 Google Sheets 的旅行管理工具。新增 2026/11/01～11/10 大阪・滋賀・熊本棒球測試行程，旅程 ID 為 `osaka-shiga-kumamoto202611`。
 
+## 2026/10/29：航班航廈與字級（前端更新）
+
+- 航班卡獨立顯示出發／抵達機場中文名稱、航廈、日期及大字起降時間；手機時間 34px、桌面 42px，航廈 16～18px。航廈標示可連至官方資訊，起降時間維持各機場當地時間。
+- 本次旅程 IT212：桃園 T1 → 關西 T1；IT795：熊本旅客航廈國際線 → 台南航空站國際線。依 [台灣虎航](https://www.tigerairtw.com/zh-tw/welcome-on-board/boarding)、[關西機場](https://www.kansai-airport.or.jp/en/flight/airlines)、[熊本機場航廈圖](https://www.kumamoto-airport.co.jp/map-terminal-building/)及[台南航空站航廈圖](https://www.tna.gov.tw/English/StaticPage/TerminalMap)查核，實際以當日公告為準。
+- 航廈設定放於 `TRIPS.flightTerminals`，限定對應旅程、航班與航線；其他未查核航班顯示「航廈待確認」。公開資料未提供航班備註時也能顯示，不新增試算表欄位、不需部署 GAS。Service Worker 升至 v18。
+- 70 項回歸測試通過，以獨立 Edge 預覽確認 320px、390px 與 1280px 無橫向溢出。
+
 ## 2026/10/21：今日摘要與住宿資訊卡（前端更新）
 
 - 行程頁的今日／下一站縮成單列，點開底部視窗才顯示目前安排、地圖與完整資訊。每 30 秒更新；出發前與旅程結束隱藏，瀏覽其他日期只留「回到今天」。依行程推算，不代表實際抵達或完成。

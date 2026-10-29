@@ -457,6 +457,22 @@ test('活動航班清單的 HTML 特殊字元安全顯示，危險網址不產�
   assert.equal(f.run("safeUrl('javascript:alert(1)')"),'');
 });
 
+test('航廈按旅程、航班及航線對應；公開航班無備註也可查看，其他航班不猜測',()=>{
+  const f=frontend();
+  f.run("renderFlights(getNovemberTripSeed().flights.map(v=>({...v,Note:''})))");
+  const html=f.elements.get('flights-container').innerHTML;
+  assert.equal((html.match(/第一航廈 T1/g)||[]).length,2);
+  assert.match(html,/旅客航廈<\/span><span>・<\/span><span>國際線/);
+  assert.match(html,/台南航空站/);
+  assert.match(html,/flight-clock\">14:40/);
+  assert.match(html,/各機場當地時間/);
+  f.run("renderFlights([{FlightNo:'BR212',DepartAirport:'TPE',ArriveAirport:'KIX'}])");
+  assert.doesNotMatch(f.elements.get('flights-container').innerHTML,/第一航廈/);
+  assert.match(f.elements.get('flights-container').innerHTML,/航廈待確認/);
+  f.run("TRIP_ID='tokyo2026'; renderFlights(getNovemberTripSeed().flights)");
+  assert.doesNotMatch(f.elements.get('flights-container').innerHTML,/第一航廈/);
+});
+
 test('行程航班卡採 FlightInfo 時間，已關聯航班導向行程處理',()=>{
   const f=frontend();
   f.run("appData.itinerary=[{ID:'i',Type:'plane',FlightID:'f',Time:'09:00'}]; appData.flights=[{ID:'f',DepartTime:'15:00',ArriveTime:'18:00',DepartDate:'2026-11-01'}];");

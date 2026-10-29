@@ -95,6 +95,33 @@
     }
     .schedule-card:hover { transform: translateX(5px); box-shadow: -4px 0 16px rgba(var(--primary-rgb),0.25), 0 4px 18px rgba(0,0,0,0.22); }
     .parallel-block .pt-badge { display: none; }
+    .flight-card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 16px #0002; color:#1e293b; }
+    .flight-header { background:linear-gradient(110deg,#0284c7,#075985); color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .flight-number { font-size:24px; font-weight:700; overflow-wrap:anywhere; }
+    .flight-airline { font-size:16px; }
+    .flight-body { padding:24px; }
+    .flight-route { display:grid; grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr); align-items:start; gap:16px; text-align:center; }
+    .flight-endpoint { min-width:0; overflow-wrap:anywhere; }
+    .flight-label { font-size:14px; color:#64748b; margin-bottom:6px; }
+    .flight-code { font-size:32px; line-height:1.2; font-weight:700; }
+    .flight-airport { font-size:18px; font-weight:600; margin-top:4px; }
+    .flight-terminal { display:inline-flex; flex-wrap:wrap; align-items:center; justify-content:center; margin:10px 0 14px; padding:6px 12px; border-radius:8px; background:#e0f2fe; color:#075985; font-size:18px; line-height:1.5; font-weight:700; }
+    .flight-terminal span { white-space:nowrap; }
+    a.flight-terminal { text-decoration:underline; text-underline-offset:3px; }
+    a.flight-terminal:hover { background:#bae6fd; }
+    .flight-terminal.pending { background:#f1f5f9; color:#64748b; }
+    .flight-date { font-size:16px; color:#475569; }
+    .flight-clock { font-size:42px; line-height:1.2; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums; }
+    .flight-direction { padding-top:40px; color:#0284c7; font-size:28px; }
+    .flight-footnote { margin-top:20px; padding-top:14px; border-top:1px dashed #cbd5e1; font-size:14px; line-height:1.7; color:#64748b; }
+    .flight-notes { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px 20px; font-size:15px; line-height:1.7; color:#475569; overflow-wrap:anywhere; }
+    @media(max-width:600px) {
+      .flight-header { padding:14px 16px; }.flight-number { font-size:22px; }.flight-airline { font-size:15px; }
+      .flight-body { padding:18px 14px; }.flight-route { grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr); gap:6px; }
+      .flight-code { font-size:28px; }.flight-airport { font-size:16px; }.flight-terminal { padding:6px 8px; font-size:16px; }
+      .flight-clock { font-size:34px; }.flight-direction { font-size:22px; }.flight-date { font-size:15px; }
+    }
+    @media(max-width:360px) { .flight-terminal { display:flex; min-height:60px; } }
     .day-panel { display: none; }
     .day-panel.active { display: block; }
     @keyframes spin-ball { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -585,6 +612,17 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       led:'⚾ OSAKA · SHIGA · KUMAMOTO ⚾', h1:'大阪・滋賀・熊本 10 日棒球之旅',
       sub:'2026.11.01 — 11.10 · 兩人 · 行程日本時間／航班當地時間', divider:'🍁 行程表 SCHEDULE ⚾',
       dayDivider:['🍁','⚾'], emptyEmoji:'🍁', icons:['⚾','🍁','🏯','🚄','🍜','♨️','🧢','🛍️'],
+      // 2026/10/29 查核；限定本旅程的航班及航線，不推測其他航空公司的航廈。
+      flightTerminals: {
+        'IT212:TPE:KIX': {
+          depart:{name:'桃園國際機場', terminal:'第一航廈 T1', source:'https://www.tigerairtw.com/zh-tw/welcome-on-board/boarding'},
+          arrive:{name:'關西國際機場', terminal:'第一航廈 T1', source:'https://www.kansai-airport.or.jp/en/flight/airlines'}
+        },
+        'IT795:KMJ:TNN': {
+          depart:{name:'阿蘇熊本機場', terminal:'旅客航廈・國際線', source:'https://www.kumamoto-airport.co.jp/map-terminal-building/'},
+          arrive:{name:'台南航空站', terminal:'航廈・國際線', source:'https://www.tna.gov.tw/English/StaticPage/TerminalMap'}
+        }
+      },
       // 日期與安排時間以關聯行程為準；地址來自既有旅行資料。
       stays: [
         {name:'S.TRAINING CENTER HOTEL OSAKA', address:'大阪府大阪市福島区福島6-23-8',
@@ -1673,6 +1711,22 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       return wrapper;
     }
 
+    function flightTerminalInfo(f) {
+      const key = [f.FlightNo, f.DepartAirport, f.ArriveAirport].map(v => String(v || '').trim().toUpperCase()).join(':');
+      return TRIPS[TRIP_ID]?.flightTerminals?.[key] || {};
+    }
+
+    function flightEndpoint(f, side, info) {
+      const prefix = side === 'depart' ? 'Depart' : 'Arrive';
+      const label = side === 'depart' ? '出發' : '抵達';
+      return '<div class="flight-endpoint"><div class="flight-label">'+label+'</div>'+
+        '<div class="flight-code">'+escHtml(f[prefix+'Airport'] || '機場待確認')+'</div>'+
+        (info?.name ? '<div class="flight-airport">'+escHtml(info.name)+'</div>' : '')+
+        (info ? '<a class="flight-terminal" href="'+escHtml(info.source)+'" target="_blank" rel="noopener noreferrer" title="查看'+label+'機場官方航廈資訊"><span>'+escHtml(info.terminal).replace('・','</span><span>・</span><span>')+'</span></a>' : '<div class="flight-terminal pending">航廈待確認</div>')+
+        '<div class="flight-date">'+escHtml(f[prefix+'Date'] || '日期待確認')+'</div>'+
+        '<div class="flight-clock">'+escHtml(f[prefix+'Time'] || '--:--')+'</div></div>';
+    }
+
     function renderFlights(flights) {
       const ct = document.getElementById('flights-container');
       if (!flights||!flights.length) {
@@ -1682,7 +1736,11 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
       let h = '<div class="space-y-4">';
       flights.forEach(f => {
         let eb = isEditMode ? '<button onclick="openFlightModal(\''+esc(f.ID)+'\')" class="text-sky-200 hover:text-white text-sm font-bold">✏️</button>' : '';
-        h += '<div class="bg-white rounded-xl overflow-hidden shadow-lg"><div class="bg-gradient-to-r from-sky-600 to-sky-800 text-white px-5 py-3 flex justify-between items-center"><div class="font-bold text-lg">✈️ '+escHtml(f.FlightNo||'')+'</div><div class="flex items-center gap-2"><span class="text-sky-200 text-sm">'+escHtml(f.Airline||'')+'</span>'+eb+'</div></div><div class="p-5"><div class="flex items-center justify-between mb-3"><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+escHtml(f.DepartAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+escHtml(f.DepartDate||'')+' '+escHtml(f.DepartTime||'')+'</div></div><div class="flex-1 mx-4 flex items-center"><div class="flex-1 border-t-2 border-dashed border-sky-200"></div><span class="mx-2 text-sky-300 text-lg">✈️</span><div class="flex-1 border-t-2 border-dashed border-sky-200"></div></div><div class="text-center"><div class="text-2xl font-bold text-gray-800">'+escHtml(f.ArriveAirport||'')+'</div><div class="text-xs text-gray-400 mt-1">'+escHtml(f.ArriveDate||'')+' '+escHtml(f.ArriveTime||'')+'</div></div></div>'+(f.BookingRef||f.Note?'<div class="border-t border-dashed border-gray-200 pt-3 text-xs text-gray-500 flex flex-wrap gap-4">'+(f.BookingRef?'<span>📋 訂位: '+escHtml(f.BookingRef)+'</span>':'')+(f.Note?'<span>📝 '+escHtml(f.Note)+'</span>':'')+'</div>':'')+'</div></div>';
+        const terminals = flightTerminalInfo(f);
+        h += '<article class="flight-card"><div class="flight-header"><h2 class="flight-number">✈️ '+escHtml(f.FlightNo||'航班待確認')+'</h2><div class="flex items-center gap-3"><span class="flight-airline">'+escHtml(f.Airline||'')+'</span>'+eb+'</div></div>'+
+          '<div class="flight-body"><div class="flight-route">'+flightEndpoint(f,'depart',terminals.depart)+'<div class="flight-direction" aria-hidden="true">→</div>'+flightEndpoint(f,'arrive',terminals.arrive)+'</div>'+
+          '<div class="flight-footnote">起降皆為各機場當地時間；航廈以航空公司當日公告為準。</div>'+
+          (f.BookingRef||f.Note ? '<div class="flight-notes">'+(f.BookingRef?'<span>📋 訂位：'+escHtml(f.BookingRef)+'</span>':'')+(f.Note?'<span>📝 '+escHtml(f.Note)+'</span>':'')+'</div>' : '')+'</div></article>';
       });
       if (isEditMode) h += '<div class="flex justify-center mt-4"><button onclick="openFlightModal()" class="px-6 py-2 bg-sky-600 text-white rounded-full font-bold hover:bg-sky-700 transition">✈️ 新增航班</button></div>';
       h += '</div>'; ct.innerHTML = h;
