@@ -1713,7 +1713,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 
     function flightTerminalInfo(f) {
       const key = [f.FlightNo, f.DepartAirport, f.ArriveAirport].map(v => String(v || '').trim().toUpperCase()).join(':');
-      return TRIPS[TRIP_ID]?.flightTerminals?.[key] || {};
+      // 裸首頁先以 CUR 顯示快取；雲端解析預設旅程前 TRIP_ID 仍是空字串。
+      const trip = TRIP_ID ? TRIPS[TRIP_ID] : CUR;
+      return trip?.flightTerminals?.[key] || {};
     }
 
     function flightEndpoint(f, side, info) {

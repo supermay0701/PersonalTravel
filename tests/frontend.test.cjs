@@ -473,6 +473,27 @@ test('航廈按旅程、航班及航線對應；公開航班無備註也可查�
   assert.doesNotMatch(f.elements.get('flights-container').innerHTML,/第一航廈/);
 });
 
+for (const outcome of ['unchanged','offline']) test('直接進首頁讀快取時航廈立即可見，且 '+outcome+' 後仍正確',async()=>{
+  const f=frontend('');
+  const seed=JSON.parse(f.run('JSON.stringify(publicData(getNovemberTripSeed()))'));
+  f.storage.set('cache_osaka-shiga-kumamoto202611',JSON.stringify(seed));
+  f.run('renderAll = () => renderFlights(appData.flights)');
+  const pending=f.run('loadData()');
+  const initial=f.elements.get('flights-container').innerHTML;
+  if(outcome==='offline') f.requests[0].reject(new Error('offline'));
+  else f.requests[0].resolve({...seed,status:'success',version:'same',resolvedTrip:'osaka-shiga-kumamoto202611'});
+  await pending;
+  assert.doesNotMatch(initial,/航廈待確認/);
+  assert.match(initial,/第一航廈 T1/);
+  assert.match(f.elements.get('flights-container').innerHTML,/第一航廈 T1/);
+});
+
+test('首頁暫定為其他旅程時不套用十一月航廈',()=>{
+  const f=frontend('');
+  f.run('CUR=TRIPS.hokkaido202606;renderFlights(getNovemberTripSeed().flights)');
+  assert.doesNotMatch(f.elements.get('flights-container').innerHTML,/第一航廈/);
+});
+
 test('行程航班卡採 FlightInfo 時間，已關聯航班導向行程處理',()=>{
   const f=frontend();
   f.run("appData.itinerary=[{ID:'i',Type:'plane',FlightID:'f',Time:'09:00'}]; appData.flights=[{ID:'f',DepartTime:'15:00',ArriveTime:'18:00',DepartDate:'2026-11-01'}];");
